@@ -49,7 +49,7 @@ const int DC[6] = {2, 1, -1, -2, -1, 1};
 struct Case {
     int n, L, req, pcount;
     vector<string> board;
-    B P, H;
+    B P, H, PH;
     vector<B> ray[6];
     vector<char> useful[6];
     vector<char> allowed[6];  // pozycje dostepne dla beamu
@@ -94,6 +94,7 @@ struct Case {
             }
         }
         pcount = pc(P);
+        PH = bor(P, H);
         canon_ready = false;
         // obwod jak level4.border_positions
         vector<pair<int, int>> border;
@@ -226,7 +227,7 @@ static void write_programs(const string& path, const vector<Program>& progs) {
 }
 
 // ---------------------------------------------------------------- beam (T4)
-struct Settings { double alpha, gamma, beta; };
+struct Settings { double alpha, gamma, beta, cross = -1; };  // cross < 0: wartosc globalna
 
 struct Node {
     int pos[6];
@@ -239,7 +240,8 @@ struct Node {
 
 struct Opt { char op; int pos; int act; B mask; };
 
-static int g_canon = 1;  // 1: stany rozniace sie zamiana emiterow a <-> a+3 sa tym samym stanem
+static int g_canon = 1;     // 1: stany rozniace sie zamiana emiterow a <-> a+3 sa tym samym stanem
+static double g_cross = 0;  // waga potencjalu krzyzowego
 
 static u64 node_hash(const Case& cs, const Node& x) {
     u64 h = 1469598103934665603ULL;
@@ -276,16 +278,27 @@ static Node state_after(const Case& cs, const Program& prefix) {
 }
 
 // Zwraca same ticki wygenerowane przez beam (bez prefiksu); dlugosc <= limit.
+// Tryb zbierania: zamiast konczyc na pierwszym odbiorze, zbiera wiele segmentow
+// konczacych sie odbiorem (rozne koncowe ustawienia emiterow) z kilku glebokosci.
+struct Collect {
+    int extra = 1, maxk = 8;
+    vector<pair<Program, Node>> found;
+    int depth_found = -1;
+};
+
 static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed, const Node* from = nullptr,
-                    const Program& prefix = {}) {
+                    const Program& prefix = {}, Collect* col = nullptr) {
     Rng rng(seed);
+    const int target = col ? (from ? from->acc : 0) + 1 : cs.req;
+    vector<array<int, 3>> done_list;
+    const double cross = st.cross >= 0 ? st.cross : g_cross;
     vector<vector<Node>> layers;
     Node start = from ? *from : state_after(cs, {});
     start.parent = -1;
     layers.push_back({start});
     struct Child { double score; int parent, i01, i2; B m; int acc; };
-    struct AxisC { int i, j; B one, two; double pot; };
-    struct PairC { int a, b; B s1, s2, g3, any; double pot; };
+    struct AxisC { int i, j; B one, two; double pot; B lone, ltwo; };
+    struct PairC { int a, b; B s1, s2, g3, any; double pot; B ls1, ls2, lg3, lany; };
     vector<Child> pool, local;
     for (int depth = 0; depth < limit; depth++) {
         const vector<Node>& layer = layers.back();
@@ -320,7 +333,9 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
                 for (int i = 0; i < (int)opts[a].size(); i++)
                     for (int j = 0; j < (int)opts[a + 3].size(); j++) {
                         const B& x = opts[a][i].mask; const B& y = opts[a + 3][j].mask;
-                        ax[a][axn[a]++] = {i, j, bxor(x, y), band(x, y), pots[a][i] + pots[a + 3][j]};
+                        // linie niezaleznie od aktywnosci - do potencjalu krzyzowego
+                        const B& lx = cs.ray[a][opts[a][i].pos]; const B& ly = cs.ray[a + 3][opts[a + 3][j].pos];
+                        ax[a][axn[a]++] = {i, j, bxor(x, y), band(x, y), pots[a][i] + pots[a + 3][j], bxor(lx, ly), band(lx, ly)};
                     }
             }
             auto& pairs = all_pairs[pi];
@@ -335,6 +350,13 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
                     pcand.g3 = bor(band(A.two, u1), band(C.two, u0));
                     pcand.any = bor(bor(pcand.s1, pcand.s2), pcand.g3);
                     pcand.pot = A.pot + C.pot;
+                    if (cross > 0) {
+                        B l0 = bor(A.lone, A.ltwo), l1 = bor(C.lone, C.ltwo);
+                        pcand.ls1 = bandn(bxor(A.lone, C.lone), bor(A.ltwo, C.ltwo));
+                        pcand.ls2 = bor(bor(bandn(A.ltwo, l1), bandn(C.ltwo, l0)), band(A.lone, C.lone));
+                        pcand.lg3 = bor(band(A.ltwo, l1), band(C.ltwo, l0));
+                        pcand.lany = bor(bor(pcand.ls1, pcand.ls2), pcand.lg3);
+                    }
                     pairs.push_back(pcand);
                 }
             auto& third = all_third[pi];
@@ -354,10 +376,21 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
                     if (beq(band(ch.m, cs.P), cs.P) && bnone(band(ch.m, cs.H))) {
                         ch.acc++;
                         ch.m = bandn(ch.m, cs.P);
-                        if (ch.acc == cs.req) { done_parent = pi; done01 = u; done2 = v; break; }
+                        if (ch.acc == target) {
+                            if (!col) { done_parent = pi; done01 = u; done2 = v; break; }
+                            if ((int)done_list.size() < col->maxk) done_list.push_back({(int)pi, u, v});
+                            continue;
+                        }
                     }
                     ch.score = ch.acc * 1e6 + 4.0 * pc(band(ch.m, cs.P)) - 4.0 * st.alpha * pc(band(ch.m, cs.H)) +
                                st.gamma * (Q.pot + T.pot) + g_noise * rng.uni();
+                    if (cross > 0) {
+                        // brakujace P z >=2 liniami emiterow (do zrobienia w 1 tick) i brudne H z >=3
+                        B l2 = bor(T.lone, T.ltwo);
+                        B ge3L = bor(bor(Q.lg3, band(Q.ls2, l2)), band(Q.ls1, T.ltwo));
+                        B ge2L = bor(bor(bor(bandn(Q.ls2, l2), band(Q.ls1, T.lone)), bandn(T.ltwo, Q.lany)), ge3L);
+                        ch.score += cross * (pc(band(bandn(cs.P, ch.m), ge2L)) + st.beta * pc(band(band(cs.H, ch.m), ge3L)));
+                    }
                     ch.parent = pi; ch.i01 = u; ch.i2 = v;
                     local.push_back(ch);
                 }
@@ -393,6 +426,26 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
             out.parent = pi;
             (void)nd;
         };
+        if (col && !done_list.empty()) {
+            for (auto& [dp, du, dv] : done_list) {
+                Node last;
+                materialize(dp, du, dv, last);
+                Program prog;
+                prog.push_back(string(last.ops));
+                int pi = dp;
+                for (int d = (int)layers.size() - 1; d >= 1; d--) {
+                    const Node& nd = layers[d][pi];
+                    prog.push_back(string(nd.ops));
+                    pi = nd.parent;
+                }
+                reverse(prog.begin(), prog.end());
+                last.m = bzero(); last.acc = 0;
+                col->found.push_back({prog, last});
+            }
+            done_list.clear();
+            if (col->depth_found < 0) col->depth_found = depth;
+            if (depth - col->depth_found >= col->extra) return {};
+        }
         if (done_parent >= 0) {
             Node last;
             materialize(done_parent, done01, done2, last);
@@ -1120,7 +1173,7 @@ int main(int argc, char** argv) {
                                {"width", "100"}, {"settings", "3:0.3:2,8:0.5:4,12:1:3,20:0.8:8,5:0.15:3,2:1:2"},
                                {"ks", "1,2,3,4,5,6,8"}, {"iterations", "20000"}, {"restarts", "3"},
                                {"minreq", "2"}, {"seed", "1"}, {"tag", ""}, {"cases", ""},
-                               {"slack", "0"}, {"noise", "1"}, {"canon", "1"}, {"basemul", "1"}, {"widths", "200,400,800,1600,3200"}, {"step", "2"}, {"maxcost", "99"}, {"segs", ""},
+                               {"slack", "0"}, {"noise", "1"}, {"canon", "1"}, {"maxnodes", "30"}, {"lnsdepth", "1000000"}, {"cross", "0"}, {"basemul", "1"}, {"widths", "200,400,800,1600,3200"}, {"step", "2"}, {"maxcost", "99"}, {"segs", ""},
                                {"threads", to_string(max(1u, thread::hardware_concurrency()))}};
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -1134,12 +1187,15 @@ int main(int argc, char** argv) {
     g_slack = stoi(opt["slack"]);
     g_noise = stod(opt["noise"]);
     g_canon = stoi(opt["canon"]);
+    g_cross = stod(opt["cross"]);
     double basemul = stod(opt["basemul"]);  // >1: porownania A/B bez obcinania do baseline
     int step = stoi(opt["step"]);
+    int maxnodes = stoi(opt["maxnodes"]);
+    int lnsdepth = stoi(opt["lnsdepth"]);  // lns: maksymalna dlugosc przebudowywanego sufiksu
     vector<Settings> settings;
     for (auto& s : split(opt["settings"], ',')) {
         auto p = split(s, ':');
-        settings.push_back({stod(p[0]), stod(p[1]), stod(p[2])});
+        settings.push_back({stod(p[0]), stod(p[1]), stod(p[2]), p.size() > 3 ? stod(p[3]) : -1});
     }
     vector<int> ks;
     for (auto& s : split(opt["ks"], ',')) ks.push_back(stoi(s));
@@ -1152,19 +1208,23 @@ int main(int argc, char** argv) {
         segspecs.push_back(v);
     }
     int lo = 0, hi = INT_MAX;
-    if (!opt["cases"].empty()) { auto p = split(opt["cases"], '-'); lo = stoi(p[0]); hi = stoi(p[1]); }
+    set<int> only;  // cases=3,17,40 : lista konkretnych przypadkow
+    if (opt["cases"].find(',') != string::npos) { for (auto& x : split(opt["cases"], ',')) only.insert(stoi(x)); }
+    else if (!opt["cases"].empty()) { auto p = split(opt["cases"], '-'); lo = stoi(p[0]); hi = stoi(p[1]); }
 
     long total_old = 0, total_new = 0;
     for (auto& name : split(opt["names"], ',')) {
         auto cases = load_cases("../level-6/in_level-6_" + name + ".txt");
         auto base = read_programs("outputs/out_level-6_" + name + ".txt", cases.size());
         vector<Program> result(cases.size());
+        string out_path = "candidates/" + mode + opt["tag"] + "/out_level-6_" + name + ".txt";
+        mutex save_mutex;
         atomic<int> next(0);
         auto worker = [&]() {
             while (true) {
                 int i = next++;
                 if (i >= (int)cases.size()) break;
-                if (i < lo || i > hi) continue;
+                if (i < lo || i > hi || (!only.empty() && !only.count(i))) continue;
                 const Case& cs = cases[i];
                 int base_len = base[i].empty() ? 1000000 : base[i].size();
                 Rng rng(seed * 1000003 + i);
@@ -1189,6 +1249,101 @@ int main(int argc, char** argv) {
                         if (improved) idle = 0;
                         else if (++idle >= 2) break;
                     }
+                } else if (mode == "graph") {
+                    // Graf konfiguracji po odbiorach: krawedzie z segmentow baseline'u oraz z beamu
+                    // zbierajacego wiele zakonczen; DP po liczbie odbiorow wybiera najkrotsza sciezke.
+                    if (cs.req < 2 || base[i].empty()) continue;
+                    auto key_of = [&](const Node& nd) {
+                        vector<int> k(7);
+                        for (int e = 0; e < 6; e++) k[e] = nd.pos[e];
+                        k[6] = nd.act;
+                        return k;
+                    };
+                    map<vector<int>, int> ids;
+                    vector<Node> nodes;
+                    struct Edge { int a, b; Program ops; };
+                    vector<Edge> edges;
+                    deque<int> frontier;
+                    auto node_id = [&](const Node& nd) {
+                        auto k = key_of(nd);
+                        auto it = ids.find(k);
+                        if (it != ids.end()) return it->second;
+                        int id = nodes.size();
+                        ids[k] = id;
+                        Node c = nd; c.m = bzero(); c.acc = 0; c.parent = -1;
+                        nodes.push_back(c);
+                        if ((int)nodes.size() <= maxnodes) frontier.push_back(id);
+                        return id;
+                    };
+                    Node start = state_after(cs, {});
+                    node_id(start);
+                    {
+                        // segmenty baseline'u
+                        Program seg;
+                        Node cur = start;
+                        int from_id = 0;
+                        B two, three;
+                        for (auto& tick : base[i]) {
+                            seg.push_back(tick);
+                            for (int e = 0; e < 6; e++) {
+                                char op = tick[e];
+                                if (op == 'F') cur.pos[e] = (cur.pos[e] + 1) % cs.L;
+                                else if (op == 'B') cur.pos[e] = (cur.pos[e] + cs.L - 1) % cs.L;
+                                else if (op == 'T') cur.act ^= 1 << e;
+                            }
+                            if (cur.act) { cs.config(cur.pos, cur.act, two, three); cur.m = bandn(bor(cur.m, two), three); }
+                            if (beq(band(cur.m, cs.P), cs.P) && bnone(band(cur.m, cs.H))) {
+                                cur.m = bandn(cur.m, cs.P);
+                                int to = node_id(cur);
+                                edges.push_back({from_id, to, seg});
+                                seg.clear();
+                                from_id = to;
+                            }
+                        }
+                    }
+                    int expanded = 0;
+                    while (!frontier.empty() && expanded < maxnodes) {
+                        int x = frontier.front(); frontier.pop_front();
+                        expanded++;
+                        for (size_t si = 0; si < settings.size(); si++) {
+                            Collect col;
+                            col.extra = 1; col.maxk = 6;
+                            Node from = nodes[x];
+                            beam(cs, width, settings[si], limit, seed * 7919 + i * 31 + si + 977 * x, &from, {}, &col);
+                            for (auto& [ops, end] : col.found) {
+                                int to = node_id(end);
+                                edges.push_back({x, to, ops});
+                            }
+                        }
+                    }
+                    // DP: dist[k][wezel]
+                    int N = nodes.size();
+                    const int INF = 1 << 29;
+                    vector<vector<int>> dist(cs.req + 1, vector<int>(N, INF)), via(cs.req + 1, vector<int>(N, -1));
+                    dist[0][0] = 0;
+                    for (int k = 0; k < cs.req; k++)
+                        for (int ei = 0; ei < (int)edges.size(); ei++) {
+                            auto& ed = edges[ei];
+                            if (dist[k][ed.a] >= INF) continue;
+                            int nd = dist[k][ed.a] + ed.ops.size();
+                            if (nd < dist[k + 1][ed.b]) { dist[k + 1][ed.b] = nd; via[k + 1][ed.b] = ei; }
+                        }
+                    if (getenv("GRAPH_DEBUG")) {
+                        int mn = INF, mx = 0;
+                        for (auto& ed : edges) { mn = min(mn, (int)ed.ops.size()); mx = max(mx, (int)ed.ops.size()); }
+                        fprintf(stderr, "case %d nodes=%d edges=%zu seglen %d..%d base=%zu\n", i, N, edges.size(), mn, mx, base[i].size());
+                    }
+                    int bestn = -1;
+                    for (int n2 = 0; n2 < N; n2++) if (dist[cs.req][n2] < INF && (bestn < 0 || dist[cs.req][n2] < dist[cs.req][bestn])) bestn = n2;
+                    if (bestn >= 0 && dist[cs.req][bestn] <= limit) {
+                        vector<int> chain;
+                        int node = bestn;
+                        for (int k = cs.req; k > 0; k--) { int ei = via[k][node]; chain.push_back(ei); node = edges[ei].a; }
+                        reverse(chain.begin(), chain.end());
+                        Program prog;
+                        for (int ei : chain) prog.insert(prog.end(), edges[ei].ops.begin(), edges[ei].ops.end());
+                        if (cs.finish(prog) && (int)prog.size() <= limit) best = prog;
+                    }
                 } else if (mode == "lns") {
                     // Przebudowa sufiksu: tniemy najlepszy program w ticku t i od tego
                     // stanu szukamy krotszej koncowki beamem; po poprawie od nowa.
@@ -1199,7 +1354,8 @@ int main(int argc, char** argv) {
                     while (improved) {
                         improved = false;
                         int len = cur.size();
-                        for (int t = len - 2; t >= 0 && !improved; t -= step) {
+                        int min_t = max(0, len - lnsdepth);
+                        for (int t = len - 2; t >= min_t && !improved; t -= step) {
                             Program prefix(cur.begin(), cur.begin() + t);
                             Node st = state_after(cs, prefix);
                             if (st.acc >= cs.req) continue;
@@ -1322,7 +1478,9 @@ int main(int argc, char** argv) {
                 } else if (mode == "polish") {
                     if (!base[i].empty()) best = polish(cs, base[i], iterations, rng);
                 }
+                lock_guard<mutex> guard(save_mutex);
                 result[i] = best;
+                if (!best.empty()) write_programs(out_path, result);  // zapis po kazdej poprawie
             }
         };
         vector<thread> pool;
@@ -1339,7 +1497,7 @@ int main(int argc, char** argv) {
         total_old += old; total_new += now;
         printf("%s: %ld -> %ld (poprawione %d/%zu)\n", name.c_str(), old, now, improved, cases.size());
         fflush(stdout);
-        write_programs("candidates/" + mode + opt["tag"] + "/out_level-6_" + name + ".txt", result);
+        write_programs(out_path, result);
     }
     printf("TOTAL: %ld -> %ld\n", total_old, total_new);
 }

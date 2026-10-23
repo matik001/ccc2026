@@ -119,13 +119,13 @@ Stan zapisany do wysłania po weryfikacji 553 programów; optymalizacja trwa:
 | --- | ---: | ---: |
 | example | 20 | 20 |
 | small | 108 | 108 |
-| medium | 5907 | 5848 |
-| large | 5069 | 4956 |
-| enormous | 4611 | 4463 |
-| medium + large + enormous | 15587 | **15267** |
-| Wszystkie pliki | 15715 | **15395** |
+| medium | 5907 | 5837 |
+| large | 5069 | 4936 |
+| enormous | 4611 | 4444 |
+| medium + large + enormous | 15587 | **15217** |
+| Wszystkie pliki | 15715 | **15345** |
 
-Poprawiono 148 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
+Poprawiono 158 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
 Identyczne pliki zapisano również w `python/outputs/`, a komplet pięciu
 plików do zgłoszenia jest w `cpp/level6_submission.zip`.
 
