@@ -242,7 +242,38 @@ NONE
 
 NONE
 
-NONE
+- - B F F -
+B F B F F B
+T T B T T T
+F B T B B B
+F - F - - B
+- - - T F F
+- F - - F B
+F F F T T B
+- - - - - -
+B B B - T F
+- B - - B F
+- - B - B B
+B B T F F F
+- F T F T F
+B F T B T -
+F B T B B B
+F - F - - B
+- - - T F F
+- F - - F B
+F F F T T B
+- - - - - -
+B B B - T F
+- B - - B F
+- - B - B B
+B B T F F F
+- F T F T F
+B F T B T -
+F B T B B B
+F - F - - B
+- - - T F F
+- F - - F B
+F F F T T B
 
 NONE
 
