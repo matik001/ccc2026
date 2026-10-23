@@ -86,6 +86,9 @@ typedef vector<string> Program;  // tick = 6 znakow F/B/T/-
 static int g_slack = 0;          // 1: beam moze zjechac na narozniki (pusty promien = wylaczenie ruchem)
 static double g_noise = 1.0;     // amplituda losowego rozbijania remisow w beamie
 static bool g_history = false; // optionally suppress states retained at earlier depths
+static double g_capture = 1e6; // 0: value a capture as the full target's matter
+static bool g_adaptive = false;
+static int g_optical_quota = 0, g_matter_quota = 0;
 const int DR[6] = {0, 1, 1, 0, -1, -1};
 const int DC[6] = {2, 1, -1, -2, -1, 1};
 
@@ -266,7 +269,7 @@ struct Node {
 
 struct Opt { char op; int pos; int act; B mask; };
 
-template<typename SearchState> static u64 node_hash(const SearchState& x, const Case& cs) {
+template<typename SearchState> static u64 node_hash(const SearchState& x, const Case& cs, bool active_only = false) {
     u64 h = 1469598103934665603ULL;
     auto mix = [&](u64 v) { h ^= v + 0x9E3779B97F4A7C15ULL + (h << 6) + (h >> 2); h *= 1099511628211ULL; };
     // Opposing emitters are optically interchangeable. Keep the representative's
@@ -275,6 +278,7 @@ template<typename SearchState> static u64 node_hash(const SearchState& x, const 
         int a = cs.delta(cs.home(axis), x.pos[axis]);
         int b = -cs.delta(cs.home(axis + 3), x.pos[axis + 3]);
         int aa = (x.act >> axis) & 1, ba = (x.act >> (axis + 3)) & 1;
+        if (active_only) { if (!aa) a = 0; if (!ba) b = 0; }
         pair<int, int> first{a, aa}, second{b, ba};
         if (second < first) swap(first, second);
         mix(static_cast<u64>(first.first + cs.L)); mix(first.second);
@@ -411,7 +415,13 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
                         ch.m = bandn(ch.m, P);
                         if (ch.acc == cs.req) { done_parent = pi; done01 = u; done2 = v; break; }
                     }
-                    ch.score = ch.acc * 1e6 + 4.0 * pc(band(ch.m, P)) - 4.0 * st.alpha * pc(band(ch.m, H)) +
+                    int filled = pc(band(ch.m, P));
+                    double alpha = st.alpha;
+                    if (g_adaptive) {
+                        double fraction = static_cast<double>(filled) / cs.pcount;
+                        alpha *= 0.2 + 0.8 * fraction * fraction;
+                    }
+                    ch.score = ch.acc * (g_capture == 0 ? 4.0 * cs.pcount : g_capture) + 4.0 * filled - 4.0 * alpha * pc(band(ch.m, H)) +
                                st.gamma * (Q.pot + T.pot) + g_noise * rng.uni();
                     ch.parent = pi; ch.i01 = u; ch.i2 = v;
                     local.push_back(ch);
@@ -419,10 +429,11 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
                 if (done_parent >= 0) break;
             }
             if (done_parent >= 0) break;
-            if ((int)local.size() > width) {
-                nth_element(local.begin(), local.begin() + width, local.end(),
+            int local_limit = (g_optical_quota || g_matter_quota) ? 2 * width : width;
+            if ((int)local.size() > local_limit) {
+                nth_element(local.begin(), local.begin() + local_limit, local.end(),
                             [](const Child& x, const Child& y) { return x.score > y.score; });
-                local.resize(width);
+                local.resize(local_limit);
             }
             pool.insert(pool.end(), local.begin(), local.end());
         }
@@ -468,13 +479,26 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
         sort(pool.begin(), pool.end(), [](const Child& x, const Child& y) { return x.score > y.score; });
         vector<Node> next;
         unordered_set<u64> seen;
+        unordered_map<u64, int> optical_groups, matter_groups;
         for (auto& ch : pool) {
             if ((int)next.size() >= width) break;
             Node nd;
             materialize(ch.parent, ch.i01, ch.i2, nd);
             nd.m = ch.m; nd.acc = ch.acc; nd.score = ch.score;
             u64 hash = node_hash(nd, cs);
-            if ((g_history && history.count(hash)) || !seen.insert(hash).second) continue;
+            if ((g_history && history.count(hash)) || seen.count(hash)) continue;
+            u64 optical = 0, matter = nd.acc + 1469598103934665603ULL;
+            if (g_optical_quota) {
+                optical = node_hash(nd, cs, true);
+                if (optical_groups[optical] >= g_optical_quota) continue;
+            }
+            if (g_matter_quota) {
+                for (auto word : nd.m.w) { matter ^= word; matter *= 1099511628211ULL; }
+                if (matter_groups[matter] >= g_matter_quota) continue;
+            }
+            seen.insert(hash);
+            if (g_optical_quota) ++optical_groups[optical];
+            if (g_matter_quota) ++matter_groups[matter];
             next.push_back(nd);
         }
         if (next.empty()) return {};
@@ -650,6 +674,8 @@ static Program anneal_cycles(const CycleModel& model, Rng& rng, int iterations, 
     if (best > model.cap) return {};
     return model.program(bs, ba, bq);
 }
+
+#include "level6_cycles.hpp"
 
 // ---------------------------------------------------------------- cykl k=2, przeglad wyczerpujacy
 // Ticki naprzemiennie A, B. Po odbiorze w B (P wyczyszczone, H czyste):
@@ -1023,6 +1049,8 @@ static Program recycle(const Case& cs, const Program& source) {
     return best.size() < source.size() ? best : Program{};
 }
 
+#include "level6_reverse.hpp"
+
 // ---------------------------------------------------------------- main
 static vector<string> split(const string& s, char sep) {
     vector<string> out;
@@ -1033,7 +1061,7 @@ static vector<string> split(const string& s, char sep) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 2) { fprintf(stderr, "uzycie: level6_opt beam|lns|cycles|cycle2|polish|repair|recycle|merge|verify klucz=wartosc...\n"); return 1; }
+    if (argc < 2) { fprintf(stderr, "uzycie: level6_opt beam|lns|cycles|cycle2|cyclesa|cyclesym|reverse|polish|repair|recycle|merge|verify klucz=wartosc...\n"); return 1; }
     string mode = argv[1];
     map<string, string> opt = {{"names", "0-example,1-small,2-medium,3-large,4-enormous"},
                                {"width", "100"}, {"settings", "3:0.3:2,8:0.5:4,12:1:3,20:0.8:8,5:0.15:3,2:1:2"},
@@ -1043,7 +1071,8 @@ int main(int argc, char** argv) {
                                {"inputdir", "level-6"}, {"baseline", "python/outputs"},
                                {"outdir", "cpp/candidates"}, {"sources", ""},
                                {"slack", "0"}, {"noise", "1"}, {"step", "2"}, {"maxcost", "99"},
-                               {"progress", "1"}, {"history", "0"}};
+                               {"progress", "1"}, {"history", "0"}, {"segs", ""}, {"capture", "1000000"}, {"adaptive", "0"},
+                               {"optical", "0"}, {"matter", "0"}};
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
         size_t eq = a.find('=');
@@ -1056,7 +1085,7 @@ int main(int argc, char** argv) {
         fprintf(stderr, "threads/width/restarts musza byc dodatnie; iterations >= 0\n");
         return 1;
     }
-    if (mode != "beam" && mode != "cycles" && mode != "polish" && mode != "repair" && mode != "recycle" && mode != "merge" && mode != "verify" && mode != "lns" && mode != "cycle2") {
+    if (mode != "beam" && mode != "cycles" && mode != "cyclesa" && mode != "cyclesym" && mode != "polish" && mode != "repair" && mode != "recycle" && mode != "reverse" && mode != "merge" && mode != "verify" && mode != "lns" && mode != "cycle2") {
         fprintf(stderr, "nieznany tryb %s\n", mode.c_str());
         return 1;
     }
@@ -1064,6 +1093,10 @@ int main(int argc, char** argv) {
     g_slack = stoi(opt["slack"]);
     g_noise = stod(opt["noise"]);
     g_history = stoi(opt["history"]) != 0;
+    g_capture = stod(opt["capture"]);
+    g_adaptive = stoi(opt["adaptive"]) != 0;
+    g_optical_quota = stoi(opt["optical"]); g_matter_quota = stoi(opt["matter"]);
+    if (g_optical_quota < 0 || g_matter_quota < 0) { fprintf(stderr, "limity roznorodnosci musza byc nieujemne\n"); return 1; }
     int step = stoi(opt["step"]);
     if (step < 1) { fprintf(stderr, "step musi byc dodatni\n"); return 1; }
     vector<Settings> settings;
@@ -1074,6 +1107,17 @@ int main(int argc, char** argv) {
     }
     vector<int> ks;
     for (auto& s : split(opt["ks"], ',')) ks.push_back(stoi(s));
+    vector<vector<int>> segspecs;
+    if (opt["segs"].empty()) for (int k : ks) segspecs.push_back({k});
+    else for (auto& spec : split(opt["segs"], ',')) {
+        vector<int> segments;
+        for (auto& value : split(spec, '+')) {
+            int length = stoi(value);
+            if (length < 1) { fprintf(stderr, "segment musi byc dodatni\n"); return 1; }
+            segments.push_back(length);
+        }
+        segspecs.push_back(move(segments));
+    }
     int lo = 0, hi = INT_MAX;
     if (!opt["cases"].empty()) { auto p = split(opt["cases"], '-'); lo = stoi(p[0]); hi = p.size() > 1 ? stoi(p[1]) : lo; }
 
@@ -1171,17 +1215,21 @@ int main(int argc, char** argv) {
                             if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; }
                         }
                 } else if (mode == "cycle2") {
-                    int maxcost = min(stoi(opt["maxcost"]), limit - (2 * cs.req - 1));
+                    int maxcost = min({stoi(opt["maxcost"]), limit - (2 * cs.req - 1), cs.n + 1});
                     if (cs.req >= minreq && maxcost >= 1) {
                         Program p = cycle2(cs, maxcost);
                         if (!p.empty() && (int)p.size() <= limit) best = p;
                     }
+                } else if (mode == "cyclesa" || mode == "cyclesym") {
+                    if (cs.req >= minreq) best = closed_cycles(cs, base[i], segspecs, iterations, restarts, rng, mode == "cyclesym");
                 } else if (mode == "polish") {
                     if (!base[i].empty()) best = polish(cs, base[i], iterations, rng);
                 } else if (mode == "repair") {
                     best = repair(cs, base[i], iterations, restarts, rng);
                 } else if (mode == "recycle") {
                     best = recycle(cs, base[i]);
+                } else if (mode == "reverse") {
+                    best = reverse_polish(cs, base[i], width, rng);
                 }
                 {
                     lock_guard<mutex> lock(result_mutex);
