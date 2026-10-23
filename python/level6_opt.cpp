@@ -41,6 +41,8 @@ struct Rng {
 
 // ---------------------------------------------------------------- przypadek
 typedef vector<string> Program;  // tick = 6 znakow F/B/T/-
+static int g_slack = 0;          // 1: beam moze zjechac na narozniki (pusty promien = wylaczenie ruchem)
+static double g_noise = 1.0;     // amplituda losowego rozbijania remisow w beamie
 const int DR[6] = {0, 1, 1, 0, -1, -1};
 const int DC[6] = {2, 1, -1, -2, -1, 1};
 
@@ -50,6 +52,7 @@ struct Case {
     B P, H;
     vector<B> ray[6];
     vector<char> useful[6];
+    vector<char> allowed[6];  // pozycje dostepne dla beamu
 
     int home(int e) const { return e * n; }
     int delta(int a, int b) const { int d = ((b - a) % L + L) % L; return d <= L / 2 ? d : d - L; }
@@ -92,6 +95,9 @@ struct Case {
                 }
                 useful[e][p] = !bnone(ray[e][p]);
             }
+            allowed[e].assign(L, 0);
+            for (int p = 0; p < L; p++)
+                allowed[e][p] = useful[e][p] || (g_slack && abs(delta(home(e), p)) <= n);
         }
     }
 
@@ -222,13 +228,33 @@ static u64 node_hash(const Node& x) {
     return h;
 }
 
-static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed) {
+// Stan po wykonaniu prefiksu programu (do startu beamu w srodku programu).
+static Node state_after(const Case& cs, const Program& prefix) {
+    Node nd;
+    for (int e = 0; e < 6; e++) nd.pos[e] = cs.home(e);
+    nd.act = 0; nd.acc = 0; nd.m = bzero(); nd.parent = -1; nd.score = 0;
+    strcpy(nd.ops, "------");
+    B two, three;
+    for (auto& tick : prefix) {
+        for (int e = 0; e < 6; e++) {
+            char op = tick[e];
+            if (op == 'F') nd.pos[e] = (nd.pos[e] + 1) % cs.L;
+            else if (op == 'B') nd.pos[e] = (nd.pos[e] + cs.L - 1) % cs.L;
+            else if (op == 'T') nd.act ^= 1 << e;
+        }
+        if (nd.act) { cs.config(nd.pos, nd.act, two, three); nd.m = bandn(bor(nd.m, two), three); }
+        if (beq(band(nd.m, cs.P), cs.P) && bnone(band(nd.m, cs.H))) { nd.acc++; nd.m = bandn(nd.m, cs.P); }
+    }
+    return nd;
+}
+
+// Zwraca same ticki wygenerowane przez beam (bez prefiksu); dlugosc <= limit.
+static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed, const Node* from = nullptr,
+                    const Program& prefix = {}) {
     Rng rng(seed);
     vector<vector<Node>> layers;
-    Node start;
-    for (int e = 0; e < 6; e++) start.pos[e] = cs.home(e);
-    start.act = 0; start.acc = 0; start.m = bzero(); start.parent = -1; start.score = 0;
-    strcpy(start.ops, "------");
+    Node start = from ? *from : state_after(cs, {});
+    start.parent = -1;
     layers.push_back({start});
     struct Child { double score; int parent, i01, i2; B m; int acc; };
     struct AxisC { int i, j; B one, two; double pot; };
@@ -256,8 +282,8 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed)
                 };
                 add('-', p, a);
                 int f = (p + 1) % cs.L, b = (p + cs.L - 1) % cs.L;
-                if (cs.useful[e][f]) add('F', f, a);
-                if (cs.useful[e][b]) add('B', b, a);
+                if (cs.allowed[e][f]) add('F', f, a);
+                if (cs.allowed[e][b]) add('B', b, a);
                 add('T', p, !a);
             }
             AxisC ax[3][16];
@@ -304,7 +330,7 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed)
                         if (ch.acc == cs.req) { done_parent = pi; done01 = u; done2 = v; break; }
                     }
                     ch.score = ch.acc * 1e6 + 4.0 * pc(band(ch.m, cs.P)) - 4.0 * st.alpha * pc(band(ch.m, cs.H)) +
-                               st.gamma * (Q.pot + T.pot) + rng.uni();
+                               st.gamma * (Q.pot + T.pot) + g_noise * rng.uni();
                     ch.parent = pi; ch.i01 = u; ch.i2 = v;
                     local.push_back(ch);
                 }
@@ -352,7 +378,9 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed)
                 pi = nd.parent;
             }
             reverse(prog.begin(), prog.end());
-            if (cs.finish(prog)) return prog;
+            Program full = prefix;
+            full.insert(full.end(), prog.begin(), prog.end());
+            if (cs.run(full) == (int)full.size()) return prog;
             return {};
         }
         sort(pool.begin(), pool.end(), [](const Child& x, const Child& y) { return x.score > y.score; });
@@ -526,6 +554,123 @@ static Program anneal_cycles(const CycleModel& model, Rng& rng, int iterations, 
     return model.program(bs, ba, bq);
 }
 
+// ---------------------------------------------------------------- cykl k=2, przeglad wyczerpujacy
+// Ticki naprzemiennie A, B. Po odbiorze w B (P wyczyszczone, H czyste):
+// odbior w kolejnym B <=> P ⊆ b2 ∪ (a2 \ b3), H ∩ b2 = ∅, H ∩ a2 ⊆ b3.
+// Kazdy emiter: stan w A (pozycja, aktywny) + op przejscia A->B (powrot to op odwrotny).
+// Koszt emitera = ticki prefiksu potrzebne do ustawienia stanu A; szukamy min max kosztu.
+struct C2Opt { int posA, actA, posB, actB; char op; int cost; };
+
+static char reverse_op(char op) { return op == 'F' ? 'B' : op == 'B' ? 'F' : op; }
+
+template <int NW>
+static Program cycle2_search(const Case& cs, int maxcost) {
+    struct AC { u64 oA[NW], tA[NW], oB[NW], tB[NW]; int i, j, cost; };
+    u64 P[NW], H[NW];
+    for (int w = 0; w < NW; w++) { P[w] = cs.P.w[w]; H[w] = cs.H.w[w]; }
+    for (int c = 1; c <= maxcost; c++) {
+        vector<C2Opt> opts[6];
+        for (int e = 0; e < 6; e++) {
+            opts[e].push_back({cs.home(e), 0, cs.home(e), 0, '-', 0});  // wylaczony
+            for (int p = 0; p < cs.L; p++) {
+                int d = abs(cs.delta(cs.home(e), p));
+                if (!cs.useful[e][p] || d > c) continue;
+                // nieaktywny w A, wlaczany na B
+                opts[e].push_back({p, 0, p, 1, 'T', d});
+                if (d + 1 > c) continue;
+                opts[e].push_back({p, 1, p, 1, '-', d + 1});
+                opts[e].push_back({p, 1, p, 0, 'T', d + 1});
+                int f = (p + 1) % cs.L, b = (p + cs.L - 1) % cs.L;
+                if (cs.useful[e][f]) opts[e].push_back({p, 1, f, 1, 'F', d + 1});
+                if (cs.useful[e][b]) opts[e].push_back({p, 1, b, 1, 'B', d + 1});
+            }
+        }
+        auto mask = [&](int e, int pos, int act, int w) -> u64 { return act ? cs.ray[e][pos].w[w] : 0; };
+        vector<AC> ax[3];
+        for (int a = 0; a < 3; a++)
+            for (int i = 0; i < (int)opts[a].size(); i++)
+                for (int j = 0; j < (int)opts[a + 3].size(); j++) {
+                    const C2Opt& x = opts[a][i]; const C2Opt& y = opts[a + 3][j];
+                    AC r;
+                    r.i = i; r.j = j; r.cost = max(x.cost, y.cost);
+                    for (int w = 0; w < NW; w++) {
+                        u64 xa = mask(a, x.posA, x.actA, w), ya = mask(a + 3, y.posA, y.actA, w);
+                        u64 xb = mask(a, x.posB, x.actB, w), yb = mask(a + 3, y.posB, y.actB, w);
+                        r.oA[w] = xa ^ ya; r.tA[w] = xa & ya; r.oB[w] = xb ^ yb; r.tB[w] = xb & yb;
+                    }
+                    ax[a].push_back(r);
+                }
+        for (auto& u : ax[0]) {
+            for (auto& v : ax[1]) {
+                u64 s1A[NW], s2A[NW], g3A[NW], anA[NW], s1B[NW], s2B[NW], g3B[NW], anB[NW];
+                bool dead = false;
+                for (int w = 0; w < NW; w++) {
+                    u64 u0 = u.oA[w] | u.tA[w], u1 = v.oA[w] | v.tA[w];
+                    s1A[w] = (u.oA[w] ^ v.oA[w]) & ~(u.tA[w] | v.tA[w]);
+                    s2A[w] = (u.tA[w] & ~u1) | (v.tA[w] & ~u0) | (u.oA[w] & v.oA[w]);
+                    g3A[w] = (u.tA[w] & u1) | (v.tA[w] & u0);
+                    anA[w] = s1A[w] | s2A[w] | g3A[w];
+                    u0 = u.oB[w] | u.tB[w]; u1 = v.oB[w] | v.tB[w];
+                    s1B[w] = (u.oB[w] ^ v.oB[w]) & ~(u.tB[w] | v.tB[w]);
+                    s2B[w] = (u.tB[w] & ~u1) | (v.tB[w] & ~u0) | (u.oB[w] & v.oB[w]);
+                    g3B[w] = (u.tB[w] & u1) | (v.tB[w] & u0);
+                    anB[w] = s1B[w] | s2B[w] | g3B[w];
+                    // komorka P zniszczona w obu tickach juz przez osie 0 i 1
+                    if (P[w] & g3A[w] & g3B[w]) dead = true;
+                }
+                if (dead) continue;
+                for (auto& x : ax[2]) {
+                    bool ok = true;
+                    for (int w = 0; w < NW && ok; w++) {
+                        u64 uA = x.oA[w] | x.tA[w], uB = x.oB[w] | x.tB[w];
+                        u64 a2 = (s2A[w] & ~uA) | (s1A[w] & x.oA[w]) | (x.tA[w] & ~anA[w]);
+                        u64 b2 = (s2B[w] & ~uB) | (s1B[w] & x.oB[w]) | (x.tB[w] & ~anB[w]);
+                        u64 b3 = g3B[w] | (s2B[w] & uB) | (s1B[w] & x.tB[w]);
+                        if ((P[w] & ~(b2 | (a2 & ~b3))) || (H[w] & b2) || (H[w] & a2 & ~b3)) ok = false;
+                    }
+                    if (!ok) continue;
+                    // znalezione przy koszcie <= c (mniejsze c juz sprawdzone) -> budujemy program
+                    const C2Opt* ch[6] = {&opts[0][u.i], &opts[1][v.i], &opts[2][x.i],
+                                          &opts[3][u.j], &opts[4][v.j], &opts[5][x.j]};
+                    int T0 = 0;
+                    for (int e = 0; e < 6; e++) T0 = max(T0, ch[e]->cost);
+                    Program prog;
+                    for (int t = 1; t <= T0; t++) {
+                        string tick(6, '-');
+                        for (int e = 0; e < 6; e++) {
+                            if (ch[e]->cost == 0) continue;
+                            int d = cs.delta(cs.home(e), ch[e]->posA);
+                            int st = T0 - abs(d) - ch[e]->actA + 1;
+                            if (st <= t && t < st + abs(d)) tick[e] = d > 0 ? 'F' : 'B';
+                            else if (ch[e]->actA && t == T0) tick[e] = 'T';
+                        }
+                        prog.push_back(tick);
+                    }
+                    string t1(6, '-'), t2(6, '-');
+                    for (int e = 0; e < 6; e++) { t1[e] = ch[e]->op; t2[e] = reverse_op(ch[e]->op); }
+                    while ((int)prog.size() < T0 + 2 * cs.req + 2) { prog.push_back(t1); prog.push_back(t2); }
+                    if (cs.finish(prog)) return prog;
+                }
+            }
+        }
+    }
+    return {};
+}
+
+static Program cycle2(const Case& cs, int maxcost) {
+    int cells = 3 * cs.n * cs.n - 3 * cs.n + 1;
+    int nw = (cells + 63) / 64;
+    switch (nw) {
+        case 1: return cycle2_search<1>(cs, maxcost);
+        case 2: return cycle2_search<2>(cs, maxcost);
+        case 3: return cycle2_search<3>(cs, maxcost);
+        case 4: return cycle2_search<4>(cs, maxcost);
+        case 5: return cycle2_search<5>(cs, maxcost);
+        case 6: return cycle2_search<6>(cs, maxcost);
+        default: return cycle2_search<7>(cs, maxcost);
+    }
+}
+
 // ---------------------------------------------------------------- polerowanie (T5)
 static Program greedy_delete(const Case& cs, Program prog) {
     size_t t = 0;
@@ -582,6 +727,7 @@ int main(int argc, char** argv) {
                                {"width", "100"}, {"settings", "3:0.3:2,8:0.5:4,12:1:3,20:0.8:8,5:0.15:3,2:1:2"},
                                {"ks", "1,2,3,4,5,6,8"}, {"iterations", "20000"}, {"restarts", "3"},
                                {"minreq", "2"}, {"seed", "1"}, {"tag", ""}, {"cases", ""},
+                               {"slack", "0"}, {"noise", "1"}, {"step", "2"}, {"maxcost", "99"},
                                {"threads", to_string(max(1u, thread::hardware_concurrency()))}};
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -592,6 +738,9 @@ int main(int argc, char** argv) {
     int threads = stoi(opt["threads"]), width = stoi(opt["width"]), iterations = stoi(opt["iterations"]);
     int restarts = stoi(opt["restarts"]), minreq = stoi(opt["minreq"]);
     u64 seed = stoull(opt["seed"]);
+    g_slack = stoi(opt["slack"]);
+    g_noise = stod(opt["noise"]);
+    int step = stoi(opt["step"]);
     vector<Settings> settings;
     for (auto& s : split(opt["settings"], ',')) {
         auto p = split(s, ':');
@@ -623,6 +772,32 @@ int main(int argc, char** argv) {
                         Program p = beam(cs, width, settings[s], limit, seed * 7919 + i * 31 + s);
                         if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; }
                     }
+                } else if (mode == "lns") {
+                    // Przebudowa sufiksu: tniemy najlepszy program w ticku t i od tego
+                    // stanu szukamy krotszej koncowki beamem; po poprawie od nowa.
+                    if (base[i].empty()) continue;
+                    Program cur = base[i];
+                    bool improved = true;
+                    int round = 0;
+                    while (improved) {
+                        improved = false;
+                        int len = cur.size();
+                        for (int t = len - 2; t >= 0 && !improved; t -= step) {
+                            Program prefix(cur.begin(), cur.begin() + t);
+                            Node st = state_after(cs, prefix);
+                            if (st.acc >= cs.req) continue;
+                            for (size_t s = 0; s < settings.size() && !improved; s++) {
+                                Program p = beam(cs, width, settings[s], len - t - 1,
+                                                 seed * 7919 + i * 31 + s + 101 * (t + 1) + 7777 * round, &st, prefix);
+                                if (p.empty()) continue;
+                                Program cand = prefix;
+                                cand.insert(cand.end(), p.begin(), p.end());
+                                if (cs.finish(cand) && cand.size() < cur.size()) { cur = cand; improved = true; }
+                            }
+                        }
+                        round++;
+                    }
+                    if (cur.size() < base[i].size()) best = cur;
                 } else if (mode == "cycles") {
                     if (cs.req < minreq) continue;
                     for (int k : ks)
@@ -632,6 +807,12 @@ int main(int argc, char** argv) {
                             Program p = anneal_cycles(model, rng, iterations, cost);
                             if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; }
                         }
+                } else if (mode == "cycle2") {
+                    int maxcost = min(stoi(opt["maxcost"]), limit - (2 * cs.req - 1));
+                    if (cs.req >= minreq && maxcost >= 1) {
+                        Program p = cycle2(cs, maxcost);
+                        if (!p.empty() && (int)p.size() <= limit) best = p;
+                    }
                 } else if (mode == "polish") {
                     if (!base[i].empty()) best = polish(cs, base[i], iterations, rng);
                 }
