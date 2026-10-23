@@ -671,6 +671,141 @@ static Program cycle2(const Case& cs, int maxcost) {
     }
 }
 
+// ---------------------------------------------------------------- cykle przez naruszenia (k dowolne)
+// Po odbiorze P jest puste, a H czyste, wiec stan komorki po cyklu wyznacza ostatni
+// tick, ktory ja dotknal: 2 trafienia -> materia, >=3 -> pusto. Odbior co k tickow
+// <=> zero naruszen. Koszt = prefiks (dojazd do stanu S0) + k * req.
+struct ViolModel {
+    const Case& cs;
+    int k;
+    vector<int> segs;  // dlugosci segmentow; po kazdym segmencie odbior
+    vector<string> seqs;
+    ViolModel(const Case& c, const vector<int>& segs_)
+        : cs(c), k(accumulate(segs_.begin(), segs_.end(), 0)), segs(segs_), seqs(all_sequences(k)) {}
+    string random_seq(Rng& rng) const { return seqs.empty() ? random_sequence(k, rng) : seqs[rng.below(seqs.size())]; }
+
+    int prefix(const int* s, const int* a) const {
+        int T0 = 0;
+        for (int e = 0; e < 6; e++) T0 = max(T0, abs(cs.delta(cs.home(e), s[e])) + a[e]);
+        return T0;
+    }
+
+    int violations(const int* s, const int* a, const string* q) const {
+        int pos[6], act = 0;
+        for (int e = 0; e < 6; e++) { pos[e] = s[e]; if (a[e]) act |= 1 << e; }
+        B two, three;
+        // Pierwszy segment w pierwszym okresie startuje po strzale S0 z prefiksu:
+        // sprawdzamy go od pustej planszy i od stanu po S0.
+        B alt = bzero();
+        if (act) { cs.config(pos, act, two, three); alt = bandn(two, three); }
+        B st = bzero();
+        int viol = 0, j = 0;
+        for (size_t g = 0; g < segs.size(); g++) {
+            st = bzero();
+            for (int t = 0; t < segs[g]; t++, j++) {
+                for (int e = 0; e < 6; e++) {
+                    char op = q[e][j];
+                    if (op == 'T') act ^= 1 << e;
+                    else if (op == 'F') pos[e] = (pos[e] + 1) % cs.L;
+                    else if (op == 'B') pos[e] = (pos[e] + cs.L - 1) % cs.L;
+                }
+                if (act) {
+                    cs.config(pos, act, two, three);
+                    st = bandn(bor(st, two), three);
+                    if (g == 0) alt = bandn(bor(alt, two), three);
+                }
+            }
+            if (g == 0) viol += pc(bandn(cs.P, band(st, alt))) + pc(band(cs.H, bor(st, alt)));
+            else viol += pc(bandn(cs.P, st)) + pc(band(cs.H, st));
+        }
+        return viol;
+    }
+
+    // ticki do req odbiorow (przy zerze naruszen)
+    int length(int T0) const {
+        int m = segs.size(), full = (cs.req - 1) / m, rest = cs.req - full * m;
+        int t = T0 + full * k;
+        for (int g = 0; g < rest; g++) t += segs[g];
+        return t;
+    }
+
+    Program program(const int* s, const int* a, const string* q) const {
+        int T0 = prefix(s, a);
+        Program prog;
+        for (int t = 1; t <= T0; t++) {
+            string tick(6, '-');
+            for (int e = 0; e < 6; e++) {
+                int d = cs.delta(cs.home(e), s[e]);
+                int st = T0 - abs(d) - a[e] + 1;
+                if (st <= t && t < st + abs(d)) tick[e] = d > 0 ? 'F' : 'B';
+                else if (a[e] && t == T0) tick[e] = 'T';
+            }
+            prog.push_back(tick);
+        }
+        while ((int)prog.size() < T0 + k * (cs.req + 1))
+            for (int j = 0; j < k; j++) {
+                string tick(6, '-');
+                for (int e = 0; e < 6; e++) tick[e] = q[e][j];
+                prog.push_back(tick);
+            }
+        if (!cs.finish(prog)) return {};
+        return prog;
+    }
+};
+
+static Program anneal_viol(const ViolModel& model, Rng& rng, int iterations, int limit) {
+    const Case& cs = model.cs;
+    int span = cs.n;
+    auto random_pos = [&](int e) { return ((cs.home(e) + rng.below(2 * span - 1) - (span - 1)) % cs.L + cs.L) % cs.L; };
+    int s[6], a[6];
+    string q[6], idle(model.k, '-');
+    for (int e = 0; e < 6; e++) {
+        s[e] = random_pos(e);
+        a[e] = rng.uni() < 0.6;
+        q[e] = rng.uni() < 0.5 ? model.random_seq(rng) : idle;
+    }
+    const int VW = 8;  // waga naruszenia wzgledem ticka prefiksu
+    auto cost_of = [&]() { return model.violations(s, a, q) * VW + model.prefix(s, a); };
+    int cost = cost_of();
+    Program best;
+    double t0 = 6.0, t1 = 0.3;
+    for (int it = 0; it < iterations; it++) {
+        double temp = t0 * pow(t1 / t0, (double)it / iterations);
+        int e = rng.below(6);
+        int os = s[e], oa = a[e];
+        string oq = q[e];
+        double r = rng.uni();
+        if (r < 0.2) q[e] = model.random_seq(rng);
+        else if (r < 0.32) { int i = rng.below(model.k), j = rng.below(model.k); swap(q[e][i], q[e][j]); }
+        else if (r < 0.55) s[e] = (s[e] + (rng.below(2) ? 1 : cs.L - 1)) % cs.L;
+        else if (r < 0.67) a[e] = !a[e];
+        else if (r < 0.77) s[e] = random_pos(e);
+        else if (r < 0.85) q[e] = idle;
+        else {
+            char op = q[e][0];
+            if (op == 'T') a[e] = !a[e];
+            else if (op == 'F') s[e] = (s[e] + 1) % cs.L;
+            else if (op == 'B') s[e] = (s[e] + cs.L - 1) % cs.L;
+            q[e] = q[e].substr(1) + q[e][0];
+        }
+        int nc = cost_of();
+        if (nc <= cost || rng.uni() < exp((cost - nc) / temp)) {
+            cost = nc;
+            if (cost < VW) {
+                // zero naruszen: cost == prefiks
+                int total = model.length(cost);
+                if (total <= limit && (best.empty() || total < (int)best.size())) {
+                    Program p = model.program(s, a, q);
+                    if (!p.empty() && (int)p.size() <= limit && (best.empty() || p.size() < best.size())) best = p;
+                }
+            }
+        } else {
+            s[e] = os; a[e] = oa; q[e] = oq;
+        }
+    }
+    return best;
+}
+
 // ---------------------------------------------------------------- polerowanie (T5)
 static Program greedy_delete(const Case& cs, Program prog) {
     size_t t = 0;
@@ -727,7 +862,7 @@ int main(int argc, char** argv) {
                                {"width", "100"}, {"settings", "3:0.3:2,8:0.5:4,12:1:3,20:0.8:8,5:0.15:3,2:1:2"},
                                {"ks", "1,2,3,4,5,6,8"}, {"iterations", "20000"}, {"restarts", "3"},
                                {"minreq", "2"}, {"seed", "1"}, {"tag", ""}, {"cases", ""},
-                               {"slack", "0"}, {"noise", "1"}, {"step", "2"}, {"maxcost", "99"},
+                               {"slack", "0"}, {"noise", "1"}, {"step", "2"}, {"maxcost", "99"}, {"segs", ""},
                                {"threads", to_string(max(1u, thread::hardware_concurrency()))}};
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -748,6 +883,14 @@ int main(int argc, char** argv) {
     }
     vector<int> ks;
     for (auto& s : split(opt["ks"], ',')) ks.push_back(stoi(s));
+    // segs=2+3,3,2+2+3 : okresy cyklu z kilkoma odbiorami (domyslnie z ks)
+    vector<vector<int>> segspecs;
+    if (opt["segs"].empty()) for (int k : ks) segspecs.push_back({k});
+    else for (auto& spec : split(opt["segs"], ',')) {
+        vector<int> v;
+        for (auto& x : split(spec, '+')) v.push_back(stoi(x));
+        segspecs.push_back(v);
+    }
     int lo = 0, hi = INT_MAX;
     if (!opt["cases"].empty()) { auto p = split(opt["cases"], '-'); lo = stoi(p[0]); hi = stoi(p[1]); }
 
@@ -812,6 +955,16 @@ int main(int argc, char** argv) {
                     if (cs.req >= minreq && maxcost >= 1) {
                         Program p = cycle2(cs, maxcost);
                         if (!p.empty() && (int)p.size() <= limit) best = p;
+                    }
+                } else if (mode == "cyclesa") {
+                    if (cs.req < minreq) continue;
+                    for (auto& segs : segspecs) {
+                        ViolModel model(cs, segs);
+                        if (model.length(0) >= limit) continue;
+                        for (int r = 0; r < restarts; r++) {
+                            Program p = anneal_viol(model, rng, iterations, limit);
+                            if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; }
+                        }
                     }
                 } else if (mode == "polish") {
                     if (!base[i].empty()) best = polish(cs, base[i], iterations, rng);
