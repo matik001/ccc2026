@@ -226,7 +226,7 @@ static void write_programs(const string& path, const vector<Program>& progs) {
 }
 
 // ---------------------------------------------------------------- beam (T4)
-struct Settings { double alpha, gamma, beta; };
+struct Settings { double alpha, gamma, beta, cross = -1; };  // cross < 0: wartosc globalna
 
 struct Node {
     int pos[6];
@@ -239,7 +239,8 @@ struct Node {
 
 struct Opt { char op; int pos; int act; B mask; };
 
-static int g_canon = 1;  // 1: stany rozniace sie zamiana emiterow a <-> a+3 sa tym samym stanem
+static int g_canon = 1;     // 1: stany rozniace sie zamiana emiterow a <-> a+3 sa tym samym stanem
+static double g_cross = 0;  // waga potencjalu krzyzowego
 
 static u64 node_hash(const Case& cs, const Node& x) {
     u64 h = 1469598103934665603ULL;
@@ -279,13 +280,14 @@ static Node state_after(const Case& cs, const Program& prefix) {
 static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed, const Node* from = nullptr,
                     const Program& prefix = {}) {
     Rng rng(seed);
+    const double cross = st.cross >= 0 ? st.cross : g_cross;
     vector<vector<Node>> layers;
     Node start = from ? *from : state_after(cs, {});
     start.parent = -1;
     layers.push_back({start});
     struct Child { double score; int parent, i01, i2; B m; int acc; };
-    struct AxisC { int i, j; B one, two; double pot; };
-    struct PairC { int a, b; B s1, s2, g3, any; double pot; };
+    struct AxisC { int i, j; B one, two; double pot; B lone, ltwo; };
+    struct PairC { int a, b; B s1, s2, g3, any; double pot; B ls1, ls2, lg3, lany; };
     vector<Child> pool, local;
     for (int depth = 0; depth < limit; depth++) {
         const vector<Node>& layer = layers.back();
@@ -320,7 +322,9 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
                 for (int i = 0; i < (int)opts[a].size(); i++)
                     for (int j = 0; j < (int)opts[a + 3].size(); j++) {
                         const B& x = opts[a][i].mask; const B& y = opts[a + 3][j].mask;
-                        ax[a][axn[a]++] = {i, j, bxor(x, y), band(x, y), pots[a][i] + pots[a + 3][j]};
+                        // linie niezaleznie od aktywnosci - do potencjalu krzyzowego
+                        const B& lx = cs.ray[a][opts[a][i].pos]; const B& ly = cs.ray[a + 3][opts[a + 3][j].pos];
+                        ax[a][axn[a]++] = {i, j, bxor(x, y), band(x, y), pots[a][i] + pots[a + 3][j], bxor(lx, ly), band(lx, ly)};
                     }
             }
             auto& pairs = all_pairs[pi];
@@ -335,6 +339,13 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
                     pcand.g3 = bor(band(A.two, u1), band(C.two, u0));
                     pcand.any = bor(bor(pcand.s1, pcand.s2), pcand.g3);
                     pcand.pot = A.pot + C.pot;
+                    if (cross > 0) {
+                        B l0 = bor(A.lone, A.ltwo), l1 = bor(C.lone, C.ltwo);
+                        pcand.ls1 = bandn(bxor(A.lone, C.lone), bor(A.ltwo, C.ltwo));
+                        pcand.ls2 = bor(bor(bandn(A.ltwo, l1), bandn(C.ltwo, l0)), band(A.lone, C.lone));
+                        pcand.lg3 = bor(band(A.ltwo, l1), band(C.ltwo, l0));
+                        pcand.lany = bor(bor(pcand.ls1, pcand.ls2), pcand.lg3);
+                    }
                     pairs.push_back(pcand);
                 }
             auto& third = all_third[pi];
@@ -358,6 +369,13 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
                     }
                     ch.score = ch.acc * 1e6 + 4.0 * pc(band(ch.m, cs.P)) - 4.0 * st.alpha * pc(band(ch.m, cs.H)) +
                                st.gamma * (Q.pot + T.pot) + g_noise * rng.uni();
+                    if (cross > 0) {
+                        // brakujace P z >=2 liniami emiterow (do zrobienia w 1 tick) i brudne H z >=3
+                        B l2 = bor(T.lone, T.ltwo);
+                        B ge3L = bor(bor(Q.lg3, band(Q.ls2, l2)), band(Q.ls1, T.ltwo));
+                        B ge2L = bor(bor(bor(bandn(Q.ls2, l2), band(Q.ls1, T.lone)), bandn(T.ltwo, Q.lany)), ge3L);
+                        ch.score += cross * (pc(band(bandn(cs.P, ch.m), ge2L)) + st.beta * pc(band(band(cs.H, ch.m), ge3L)));
+                    }
                     ch.parent = pi; ch.i01 = u; ch.i2 = v;
                     local.push_back(ch);
                 }
@@ -1120,7 +1138,7 @@ int main(int argc, char** argv) {
                                {"width", "100"}, {"settings", "3:0.3:2,8:0.5:4,12:1:3,20:0.8:8,5:0.15:3,2:1:2"},
                                {"ks", "1,2,3,4,5,6,8"}, {"iterations", "20000"}, {"restarts", "3"},
                                {"minreq", "2"}, {"seed", "1"}, {"tag", ""}, {"cases", ""},
-                               {"slack", "0"}, {"noise", "1"}, {"canon", "1"}, {"basemul", "1"}, {"widths", "200,400,800,1600,3200"}, {"step", "2"}, {"maxcost", "99"}, {"segs", ""},
+                               {"slack", "0"}, {"noise", "1"}, {"canon", "1"}, {"lnsdepth", "1000000"}, {"cross", "0"}, {"basemul", "1"}, {"widths", "200,400,800,1600,3200"}, {"step", "2"}, {"maxcost", "99"}, {"segs", ""},
                                {"threads", to_string(max(1u, thread::hardware_concurrency()))}};
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -1134,12 +1152,14 @@ int main(int argc, char** argv) {
     g_slack = stoi(opt["slack"]);
     g_noise = stod(opt["noise"]);
     g_canon = stoi(opt["canon"]);
+    g_cross = stod(opt["cross"]);
     double basemul = stod(opt["basemul"]);  // >1: porownania A/B bez obcinania do baseline
     int step = stoi(opt["step"]);
+    int lnsdepth = stoi(opt["lnsdepth"]);  // lns: maksymalna dlugosc przebudowywanego sufiksu
     vector<Settings> settings;
     for (auto& s : split(opt["settings"], ',')) {
         auto p = split(s, ':');
-        settings.push_back({stod(p[0]), stod(p[1]), stod(p[2])});
+        settings.push_back({stod(p[0]), stod(p[1]), stod(p[2]), p.size() > 3 ? stod(p[3]) : -1});
     }
     vector<int> ks;
     for (auto& s : split(opt["ks"], ',')) ks.push_back(stoi(s));
@@ -1159,6 +1179,8 @@ int main(int argc, char** argv) {
         auto cases = load_cases("../level-6/in_level-6_" + name + ".txt");
         auto base = read_programs("outputs/out_level-6_" + name + ".txt", cases.size());
         vector<Program> result(cases.size());
+        string out_path = "candidates/" + mode + opt["tag"] + "/out_level-6_" + name + ".txt";
+        mutex save_mutex;
         atomic<int> next(0);
         auto worker = [&]() {
             while (true) {
@@ -1199,7 +1221,8 @@ int main(int argc, char** argv) {
                     while (improved) {
                         improved = false;
                         int len = cur.size();
-                        for (int t = len - 2; t >= 0 && !improved; t -= step) {
+                        int min_t = max(0, len - lnsdepth);
+                        for (int t = len - 2; t >= min_t && !improved; t -= step) {
                             Program prefix(cur.begin(), cur.begin() + t);
                             Node st = state_after(cs, prefix);
                             if (st.acc >= cs.req) continue;
@@ -1322,7 +1345,9 @@ int main(int argc, char** argv) {
                 } else if (mode == "polish") {
                     if (!base[i].empty()) best = polish(cs, base[i], iterations, rng);
                 }
+                lock_guard<mutex> guard(save_mutex);
                 result[i] = best;
+                if (!best.empty()) write_programs(out_path, result);  // zapis po kazdej poprawie
             }
         };
         vector<thread> pool;
@@ -1339,7 +1364,7 @@ int main(int argc, char** argv) {
         total_old += old; total_new += now;
         printf("%s: %ld -> %ld (poprawione %d/%zu)\n", name.c_str(), old, now, improved, cases.size());
         fflush(stdout);
-        write_programs("candidates/" + mode + opt["tag"] + "/out_level-6_" + name + ".txt", result);
+        write_programs(out_path, result);
     }
     printf("TOTAL: %ld -> %ld\n", total_old, total_new);
 }
