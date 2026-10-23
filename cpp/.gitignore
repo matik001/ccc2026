@@ -15,5 +15,7 @@
 /level6_sat
 /level6_sat_cycle
 /level6_splice
+/level6_trajectories
+/level6_retime
 /vendor/
 /level6_*.build.*

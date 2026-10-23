@@ -271,18 +271,17 @@ B B F B B T
 F B F T T -
 T F F B T F
 
-B B F B B B
-B T F B B B
-T B - T - -
-B B T B T F
-B - - - B F
-F T F - B F
+B B F B B F
+B T F B B F
+T B - T - F
+B B T B T T
+B - - - B -
+F T F - B B
 - F F F B F
-F F F B F T
+F F F B F F
 B T F - B F
-- B - T B F
-T F B B F F
-- - - - - F
+- B - - B -
+T F B - F F
 
 B - T B T F
 B T F B F F
