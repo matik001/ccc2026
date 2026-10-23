@@ -3,7 +3,7 @@
 // so a shorter path with the same emitter endpoints can replace an inner cycle.
 template<int NW>
 static Program reverse_segment_impl(const Case& cs, const Node& begin, const Node& end,
-                                    int limit, int width, Rng& rng) {
+                                    int limit, int width, Rng& rng, bool free_end) {
     using BB = SmallB<NW>;
     if (limit < 1) return {};
     struct ReverseNode {
@@ -20,17 +20,52 @@ static Program reverse_segment_impl(const Case& cs, const Node& begin, const Nod
     vector<BB> rays[6];
     for (int e = 0; e < 6; ++e)
         for (const auto& mask : cs.ray[e]) rays[e].push_back(smallBits<NW>(mask));
-    ReverseNode root;
-    copy(end.pos, end.pos + 6, root.pos.begin());
-    root.active = end.act;
-    B root_two, root_three;
-    cs.config(end.pos, end.act, root_two, root_three);
-    BB two = smallBits<NW>(root_two), three = smallBits<NW>(root_three);
     BB target = smallBits<NW>(cs.P), halo = smallBits<NW>(cs.H);
-    if (!bnone(band(target, three)) || !bnone(band(halo, bandn(two, three)))) return {};
-    root.ones = bandn(target, two);
-    root.zeros = bandn(halo, three);
-    vector<vector<ReverseNode>> layers{{root}};
+    vector<pair<double, ReverseNode>> roots;
+    auto add_root = [&](const array<int, 6>& positions, int active) {
+        B root_two, root_three;
+        cs.config(positions.data(), active, root_two, root_three);
+        BB two = smallBits<NW>(root_two), three = smallBits<NW>(root_three);
+        if (!bnone(band(target, three)) || !bnone(band(halo, bandn(two, three)))) return;
+        ReverseNode root;
+        root.pos = positions; root.active = active;
+        root.ones = bandn(target, two); root.zeros = bandn(halo, three);
+        int distance = 0, sum_distance = 0;
+        for (int e = 0; e < 6; ++e) {
+            int d = abs(cs.delta(positions[e], begin.pos[e])) + (((active >> e) & 1) != ((begin.act >> e) & 1));
+            distance = max(distance, d); sum_distance += d;
+        }
+        if (distance > limit) return;
+        double score = -4.0 * pc(bandn(root.ones, initial_matter)) - 0.35 * pc(root.zeros) -
+                       1.5 * distance - 0.1 * sum_distance + 0.8 * rng.uni();
+        roots.push_back({score, move(root)});
+    };
+    array<int, 6> positions;
+    copy(end.pos, end.pos + 6, positions.begin());
+    if (!free_end) add_root(positions, end.act);
+    else {
+        auto generate = [&](auto&& self, int emitter, int active) -> void {
+            if (emitter == 6) { add_root(positions, active); return; }
+            int p = end.pos[emitter];
+            positions[emitter] = p; self(self, emitter + 1, active);
+            self(self, emitter + 1, active ^ (1 << emitter));
+            for (int delta : {-1, 1}) {
+                int next = (p + delta + cs.L) % cs.L;
+                if (cs.allowed[emitter][next]) { positions[emitter] = next; self(self, emitter + 1, active); }
+            }
+            positions[emitter] = p;
+        };
+        generate(generate, 0, end.act);
+    }
+    if (roots.empty()) return {};
+    sort(roots.begin(), roots.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+    vector<ReverseNode> first_layer;
+    for (auto& root : roots) {
+        first_layer.push_back(move(root.second));
+        if (static_cast<int>(first_layer.size()) == width) break;
+    }
+    vector<vector<ReverseNode>> layers;
+    layers.push_back(move(first_layer));
     for (int depth = 1; depth <= limit; ++depth) {
         const auto& layer = layers.back();
         vector<array<vector<Option>, 6>> options(layer.size());
@@ -144,19 +179,19 @@ static Program reverse_segment_impl(const Case& cs, const Node& begin, const Nod
 }
 
 static Program reverse_segment(const Case& cs, const Node& begin, const Node& end,
-                               int limit, int width, Rng& rng) {
+                               int limit, int width, Rng& rng, bool free_end = false) {
     switch ((3 * cs.n * (cs.n - 1) + 64) / 64) {
-        case 1: return reverse_segment_impl<1>(cs, begin, end, limit, width, rng);
-        case 2: return reverse_segment_impl<2>(cs, begin, end, limit, width, rng);
-        case 3: return reverse_segment_impl<3>(cs, begin, end, limit, width, rng);
-        case 4: return reverse_segment_impl<4>(cs, begin, end, limit, width, rng);
-        case 5: return reverse_segment_impl<5>(cs, begin, end, limit, width, rng);
-        case 6: return reverse_segment_impl<6>(cs, begin, end, limit, width, rng);
-        default: return reverse_segment_impl<7>(cs, begin, end, limit, width, rng);
+        case 1: return reverse_segment_impl<1>(cs, begin, end, limit, width, rng, free_end);
+        case 2: return reverse_segment_impl<2>(cs, begin, end, limit, width, rng, free_end);
+        case 3: return reverse_segment_impl<3>(cs, begin, end, limit, width, rng, free_end);
+        case 4: return reverse_segment_impl<4>(cs, begin, end, limit, width, rng, free_end);
+        case 5: return reverse_segment_impl<5>(cs, begin, end, limit, width, rng, free_end);
+        case 6: return reverse_segment_impl<6>(cs, begin, end, limit, width, rng, free_end);
+        default: return reverse_segment_impl<7>(cs, begin, end, limit, width, rng, free_end);
     }
 }
 
-static Program reverse_polish(const Case& cs, Program program, int width, Rng& rng) {
+static Program reverse_polish(const Case& cs, Program program, int width, Rng& rng, bool free_end = false) {
     const size_t old_size = program.size();
     unordered_map<string, Program> cache;
     for (;;) {
@@ -166,12 +201,13 @@ static Program reverse_polish(const Case& cs, Program program, int width, Rng& r
         for (int end_tick = 1; end_tick <= static_cast<int>(program.size()); ++end_tick) {
             Node end = state_after(cs, Program(program.begin(), program.begin() + end_tick));
             if (end.acc == previous.acc) continue;
+            if (free_end && end.acc < cs.req) { previous_tick = end_tick; previous = end; continue; }
             int length = end_tick - previous_tick;
             string key = to_string(length) + ":" + to_string(previous.act) + ":" + to_string(end.act);
             for (int e = 0; e < 6; ++e) key += ":" + to_string(previous.pos[e]) + ":" + to_string(end.pos[e]);
             auto entry = cache.find(key);
             if (entry == cache.end()) {
-                Program path = reverse_segment(cs, previous, end, length - 1, width, rng);
+                Program path = reverse_segment(cs, previous, end, length - 1, width, rng, free_end);
                 entry = cache.emplace(key, move(path)).first;
             }
             if (!entry->second.empty()) {
