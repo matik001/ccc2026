@@ -806,6 +806,153 @@ static Program anneal_viol(const ViolModel& model, Rng& rng, int iterations, int
     return best;
 }
 
+// ---------------------------------------------------------------- malowanie trzema parami
+// Para (a, a+3) na wspolnej linii daje 2 trafienia calej linii. Gdy pracuja tylko pary,
+// komorka dostaje 2 trafienia za kazda malowana linie: jedna -> materia, >=2 -> zniszczenie.
+// SA ustawia sciezki trzech par (start, ruchy -1/0/+1) tak, by zostalo jak najmniej
+// defektow; reszte domyka beam.
+struct PaintModel {
+    const Case& cs;
+    int T;  // liczba tickow malowania (po wlaczeniu)
+    vector<B> line[3];       // line[a][o + n - 1]
+    vector<int> posA[3], posB[3];
+    PaintModel(const Case& c, int T_) : cs(c), T(T_) {
+        for (int a = 0; a < 3; a++)
+            for (int o = -(cs.n - 1); o <= cs.n - 1; o++) {
+                int pa = ((cs.home(a) + o) % cs.L + cs.L) % cs.L, pb = -1;
+                for (int p = 0; p < cs.L; p++)
+                    if (cs.useful[a + 3][p] && beq(cs.ray[a + 3][p], cs.ray[a][pa])) pb = p;
+                line[a].push_back(cs.ray[a][pa]);
+                posA[a].push_back(pa);
+                posB[a].push_back(pb);
+            }
+    }
+    int lo() const { return -(cs.n - 1); }
+    int hi() const { return cs.n - 1; }
+
+    // off[a] = start (offset), mv[a][t] in {-1,0,1}; en[a] = czy para uzywana
+    B final_state(const int* off, const int* en, const vector<int>* mv, int& bad) const {
+        bad = 0;
+        int o[3];
+        for (int a = 0; a < 3; a++) o[a] = off[a];
+        B st = bzero();
+        for (int t = 0; t < T; t++) {
+            B L[3];
+            for (int a = 0; a < 3; a++) {
+                if (t > 0) o[a] += mv[a][t];
+                if (o[a] < lo() || o[a] > hi()) { bad++; o[a] = max(lo(), min(hi(), o[a])); }
+                L[a] = en[a] ? line[a][o[a] - lo()] : bzero();
+            }
+            B destroy = bor(bor(band(L[0], L[1]), band(L[0], L[2])), band(L[1], L[2]));
+            B create = bandn(bor(bor(L[0], L[1]), L[2]), destroy);
+            st = bandn(bor(st, create), destroy);
+        }
+        return st;
+    }
+
+    Program program(const int* off, const int* en, const vector<int>* mv) const {
+        int s = 0;
+        for (int a = 0; a < 3; a++) if (en[a]) s = max(s, max(abs(cs.delta(cs.home(a), posA[a][off[a] - lo()])),
+                                                             abs(cs.delta(cs.home(a + 3), posB[a][off[a] - lo()]))));
+        Program prog;
+        int pos[6];
+        for (int e = 0; e < 6; e++) pos[e] = cs.home(e);
+        // dojazd (wyrownany do konca), potem tick wlaczenia
+        for (int t = 0; t < s; t++) {
+            string tick(6, '-');
+            for (int a = 0; a < 3; a++) {
+                if (!en[a]) continue;
+                int tg[2] = {posA[a][off[a] - lo()], posB[a][off[a] - lo()]};
+                for (int k = 0; k < 2; k++) {
+                    int e = a + 3 * k;
+                    int d = cs.delta(pos[e], tg[k]);
+                    if (d != 0 && abs(d) >= s - t) { tick[e] = d > 0 ? 'F' : 'B'; pos[e] = (pos[e] + (d > 0 ? 1 : cs.L - 1)) % cs.L; }
+                }
+            }
+            prog.push_back(tick);
+        }
+        string on(6, '-');
+        for (int a = 0; a < 3; a++) if (en[a]) on[a] = on[a + 3] = 'T';
+        prog.push_back(on);
+        int o[3] = {off[0], off[1], off[2]};
+        for (int t = 1; t < T; t++) {
+            string tick(6, '-');
+            for (int a = 0; a < 3; a++) {
+                if (!en[a]) continue;
+                o[a] = max(lo(), min(hi(), o[a] + mv[a][t]));
+                int tg[2] = {posA[a][o[a] - lo()], posB[a][o[a] - lo()]};
+                for (int k = 0; k < 2; k++) {
+                    int e = a + 3 * k;
+                    int d = cs.delta(pos[e], tg[k]);
+                    if (d) { tick[e] = d > 0 ? 'F' : 'B'; pos[e] = tg[k]; }
+                }
+            }
+            prog.push_back(tick);
+        }
+        return prog;
+    }
+};
+
+static Program paint_search(const Case& cs, int T, int iterations, Rng& rng, double wp, double wh) {
+    PaintModel pm(cs, T);
+    for (int a = 0; a < 3; a++)
+        for (int p : pm.posB[a]) if (p < 0) return {};
+    int off[3], en[3];
+    vector<int> mv[3];
+    for (int a = 0; a < 3; a++) {
+        off[a] = rng.below(2 * cs.n - 1) + pm.lo();
+        en[a] = 1;
+        mv[a].assign(T, 0);
+        for (int t = 1; t < T; t++) mv[a][t] = rng.below(3) - 1;
+    }
+    auto cost_of = [&]() {
+        int bad;
+        B st = pm.final_state(off, en, mv, bad);
+        int s = 0;
+        for (int a = 0; a < 3; a++) if (en[a]) s = max(s, abs(off[a]));
+        return wp * pc(bandn(cs.P, st)) + wh * pc(band(cs.H, st)) + 100.0 * bad + 0.5 * s;
+    };
+    double cost = cost_of(), best = cost;
+    int boff[3], ben[3];
+    vector<int> bmv[3];
+    for (int a = 0; a < 3; a++) { boff[a] = off[a]; ben[a] = en[a]; bmv[a] = mv[a]; }
+    double t0 = 3.0, t1 = 0.05;
+    for (int it = 0; it < iterations; it++) {
+        double temp = t0 * pow(t1 / t0, (double)it / iterations);
+        int a = rng.below(3);
+        double r = rng.uni();
+        int saved_off = off[a], saved_en = en[a];
+        vector<int> saved_mv;
+        int t = 0, old = 0, t2 = 0, old2 = 0;
+        int kind;
+        if (r < 0.6 && T > 1) {
+            kind = 0; t = 1 + rng.below(T - 1); old = mv[a][t]; mv[a][t] = rng.below(3) - 1;
+        } else if (r < 0.8 && T > 2) {
+            // przesuniecie ruchu w czasie (zamiana sasiednich)
+            kind = 1; t = 1 + rng.below(T - 2); t2 = t + 1; old = mv[a][t]; old2 = mv[a][t2];
+            swap(mv[a][t], mv[a][t2]);
+        } else if (r < 0.95) {
+            kind = 2; off[a] += rng.below(2) ? 1 : -1;
+        } else {
+            kind = 3; en[a] = !en[a];
+        }
+        double nc = cost_of();
+        if (nc <= cost || rng.uni() < exp((cost - nc) / temp)) {
+            cost = nc;
+            if (cost < best) { best = cost; for (int b = 0; b < 3; b++) { boff[b] = off[b]; ben[b] = en[b]; bmv[b] = mv[b]; } }
+        } else {
+            if (kind == 0) mv[a][t] = old;
+            else if (kind == 1) { mv[a][t] = old; mv[a][t2] = old2; }
+            else { off[a] = saved_off; en[a] = saved_en; }
+        }
+        (void)saved_mv;
+    }
+    int bad;
+    pm.final_state(boff, ben, bmv, bad);
+    if (bad) return {};
+    return pm.program(boff, ben, bmv);
+}
+
 // ---------------------------------------------------------------- polerowanie (T5)
 static Program greedy_delete(const Case& cs, Program prog) {
     size_t t = 0;
@@ -941,6 +1088,82 @@ int main(int argc, char** argv) {
                         round++;
                     }
                     if (cur.size() < base[i].size()) best = cur;
+                } else if (mode == "fill") {
+                    // Makro: wybrane pary (a, a+3) wlaczone na srodkowych liniach i
+                    // przesuwane razem w strone wybranej polowy planszy (3 pary pokrywaja
+                    // cala plansze w ~n tickach). Od uciętego makra dalej szuka beam.
+                    for (int subset = 1; subset < 8; subset++)
+                        for (int signs = 0; signs < 8; signs++) {
+                            if (signs & ~subset) continue;  // znak tylko dla wybranych par
+                            Program macro;
+                            string first(6, '-');
+                            for (int a = 0; a < 3; a++) if (subset >> a & 1) first[a] = first[a + 3] = 'T';
+                            macro.push_back(first);
+                            int pos[6];
+                            for (int e = 0; e < 6; e++) pos[e] = cs.home(e);
+                            for (int t = 1; t < cs.n; t++) {
+                                string tick(6, '-');
+                                bool ok = true;
+                                for (int a = 0; a < 3 && ok; a++) {
+                                    if (!(subset >> a & 1)) continue;
+                                    int da = (signs >> a & 1) ? 1 : -1;
+                                    int pa = (pos[a] + da + cs.L) % cs.L;
+                                    int found = 0;
+                                    for (int db : {1, -1}) {
+                                        int pb = (pos[a + 3] + db + cs.L) % cs.L;
+                                        if (beq(cs.ray[a][pa], cs.ray[a + 3][pb]) && cs.useful[a][pa]) {
+                                            tick[a] = da > 0 ? 'F' : 'B';
+                                            tick[a + 3] = db > 0 ? 'F' : 'B';
+                                            pos[a] = pa; pos[a + 3] = pb; found = 1;
+                                            break;
+                                        }
+                                    }
+                                    if (!found) ok = false;
+                                }
+                                if (!ok) break;
+                                macro.push_back(tick);
+                            }
+                            for (int j = 1; j <= (int)macro.size(); j += step) {
+                                if (j >= limit) break;
+                                Program prefix(macro.begin(), macro.begin() + j);
+                                Node st = state_after(cs, prefix);
+                                if (st.acc >= cs.req) continue;
+                                for (size_t si = 0; si < settings.size(); si++) {
+                                    Program p = beam(cs, width, settings[si], limit - j,
+                                                     seed * 7919 + i * 31 + si + 97 * j + 1009 * (subset * 8 + signs), &st, prefix);
+                                    if (p.empty()) continue;
+                                    Program cand = prefix;
+                                    cand.insert(cand.end(), p.begin(), p.end());
+                                    if (cs.finish(cand) && (int)cand.size() <= limit) { best = cand; limit = cand.size() - 1; }
+                                }
+                            }
+                        }
+                } else if (mode == "paint") {
+                    // T od n-2 do 2n; dla kazdego SA malowania, potem beam domyka od konca
+                    // (i od kilku wczesniejszych ciec).
+                    for (int T = max(2, cs.n - 2); T <= 2 * cs.n && T < limit; T += 2)
+                        for (int r = 0; r < restarts; r++) {
+                            Program macro = paint_search(cs, T, iterations, rng, 1.0, 2.0);
+                            if (macro.empty()) continue;
+                            for (int cut = (int)macro.size(); cut >= max(1, (int)macro.size() - 4); cut -= 2) {
+                                if (cut >= limit) continue;
+                                Program prefix(macro.begin(), macro.begin() + cut);
+                                Node st = state_after(cs, prefix);
+                                if (st.acc >= cs.req) {
+                                    Program cand = prefix;
+                                    if (cs.finish(cand) && (int)cand.size() <= limit) { best = cand; limit = cand.size() - 1; }
+                                    continue;
+                                }
+                                for (size_t si = 0; si < settings.size(); si++) {
+                                    Program p = beam(cs, width, settings[si], limit - cut,
+                                                     seed * 7919 + i * 31 + si + 97 * cut + 1009 * T + 13 * r, &st, prefix);
+                                    if (p.empty()) continue;
+                                    Program cand = prefix;
+                                    cand.insert(cand.end(), p.begin(), p.end());
+                                    if (cs.finish(cand) && (int)cand.size() <= limit) { best = cand; limit = cand.size() - 1; }
+                                }
+                            }
+                        }
                 } else if (mode == "cycles") {
                     if (cs.req < minreq) continue;
                     for (int k : ks)
@@ -951,7 +1174,8 @@ int main(int argc, char** argv) {
                             if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; }
                         }
                 } else if (mode == "cycle2") {
-                    int maxcost = min(stoi(opt["maxcost"]), limit - (2 * cs.req - 1));
+                    // powyzej n+1 zbior opcji juz nie rosnie - kolejne poziomy to ta sama praca
+                    int maxcost = min({stoi(opt["maxcost"]), limit - (2 * cs.req - 1), cs.n + 1});
                     if (cs.req >= minreq && maxcost >= 1) {
                         Program p = cycle2(cs, maxcost);
                         if (!p.empty() && (int)p.size() <= limit) best = p;

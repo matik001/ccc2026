@@ -32,13 +32,12 @@ T T T T T T
 - - - - - -
 - - - - - -
 
-- - F B - F
-T B T B T T
-- T T F B B
-- T T B F F
-- T T F B B
-- T T B F F
-- T T F B B
+F B T B T B
+T T F T F T
+- - F - - -
+B F B T T T
+F B - T T T
+- F T F T T
 
 - B - B F B
 - T - T T T

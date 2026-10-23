@@ -1,0 +1,24 @@
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+F B T B T B
+T T F T F T
+- - F - - -
+B F B T T T
+F B - T T T
+- F T F T T
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
