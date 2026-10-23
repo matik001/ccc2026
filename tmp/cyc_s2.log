@@ -1,0 +1,4 @@
+2-medium: 12333 -> 9492 (poprawione 146/210)
+1-small: 179 -> 120 (poprawione 5/10)
+0-example: 36 -> 31 (poprawione 2/3)
+python3 level6_cycles.py 2-medium 1-small 0-example --iterations 20000  3  2   1503.08s user 3.21s system 1289% cpu 1:56.82 total

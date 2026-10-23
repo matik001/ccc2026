@@ -1,0 +1,37 @@
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+- F - F B B
+T T T T B B
+- F B F T T
+- B F B T T
+- F B F T T
+- B F B T T
+- F B F T T
+- B F B T T
+- F B F T T
+- B F B T T
+- F B F T T
+- B F B T T
+- F B F T T
+- B F B T T
+- F B F T T
+- B F B T T
+- F B F T T
+- - - - - -
+- B F B T T
