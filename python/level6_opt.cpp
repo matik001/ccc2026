@@ -49,7 +49,7 @@ const int DC[6] = {2, 1, -1, -2, -1, 1};
 struct Case {
     int n, L, req, pcount;
     vector<string> board;
-    B P, H;
+    B P, H, PH;
     vector<B> ray[6];
     vector<char> useful[6];
     vector<char> allowed[6];  // pozycje dostepne dla beamu
@@ -94,6 +94,7 @@ struct Case {
             }
         }
         pcount = pc(P);
+        PH = bor(P, H);
         canon_ready = false;
         // obwod jak level4.border_positions
         vector<pair<int, int>> border;
@@ -1207,7 +1208,9 @@ int main(int argc, char** argv) {
         segspecs.push_back(v);
     }
     int lo = 0, hi = INT_MAX;
-    if (!opt["cases"].empty()) { auto p = split(opt["cases"], '-'); lo = stoi(p[0]); hi = stoi(p[1]); }
+    set<int> only;  // cases=3,17,40 : lista konkretnych przypadkow
+    if (opt["cases"].find(',') != string::npos) { for (auto& x : split(opt["cases"], ',')) only.insert(stoi(x)); }
+    else if (!opt["cases"].empty()) { auto p = split(opt["cases"], '-'); lo = stoi(p[0]); hi = stoi(p[1]); }
 
     long total_old = 0, total_new = 0;
     for (auto& name : split(opt["names"], ',')) {
@@ -1221,7 +1224,7 @@ int main(int argc, char** argv) {
             while (true) {
                 int i = next++;
                 if (i >= (int)cases.size()) break;
-                if (i < lo || i > hi) continue;
+                if (i < lo || i > hi || (!only.empty() && !only.count(i))) continue;
                 const Case& cs = cases[i];
                 int base_len = base[i].empty() ? 1000000 : base[i].size();
                 Rng rng(seed * 1000003 + i);
