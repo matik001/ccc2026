@@ -6989,15 +6989,13 @@ B B - F - B
 T T - T T T
 F - - B B -
 F F - B T -
-- - - - B -
-- - - - F -
+- - - - - -
 B B - F T -
 B - - F F -
 - - - - - -
 F - - B B -
 F F - B T -
-- - - - B -
-- - - - F -
+- - - - - -
 B B - F T -
 B - - F F -
 - - - - - -

@@ -49,9 +49,8 @@ def shorten_startup(radius, board, program):
     return program
 
 
-def remove_idle_ticks(radius, board, program, required):
-    if not any(all(op == '-' for op in tick) for tick in program):
-        return program
+def compress_program(radius, board, program, required):
+    """Merge command spans with the same final machine state and delivery count."""
     from level6_multibeam import _geometry
     rays, target, halo = _geometry(radius, board)
     perimeter = radius * 6
@@ -78,12 +77,12 @@ def remove_idle_ticks(radius, board, program, required):
             two |= one & ray
             one |= ray
         exposures.append((two & ~three, three))
-    removed = set()
+    program = list(program)
 
-    def count():
+    def count(skip_start=-1, skip_end=-1):
         matter = submitted = 0
         for index, (create, destroy) in enumerate(exposures):
-            if index in removed:
+            if skip_start <= index < skip_end:
                 continue
             matter = (matter | create) & ~destroy
             if matter & target == target and not matter & halo:
@@ -93,9 +92,34 @@ def remove_idle_ticks(radius, board, program, required):
 
     if count() != required:
         return program
-    for index, tick in enumerate(program):
-        if all(op == '-' for op in tick):
-            removed.add(index)
-            if count() != required:
-                removed.remove(index)
-    return [tick for index, tick in enumerate(program) if index not in removed]
+    index = 0
+    while index < len(program):
+        if all(op == '-' for op in program[index]) and count(index, index + 1) == required:
+            del program[index]
+            del exposures[index]
+            index = max(0, index - 6)
+            continue
+        movements, toggles, candidates = [0] * 6, [0] * 6, []
+        for end in range(index, min(len(program), index + 7)):
+            for emitter, operation in enumerate(program[end]):
+                if operation == 'F':
+                    movements[emitter] += 1
+                elif operation == 'B':
+                    movements[emitter] -= 1
+                elif operation == 'T':
+                    toggles[emitter] ^= 1
+            if end == index:
+                continue
+            if all(abs(d) <= 1 and (not d or not t) for d, t in zip(movements, toggles)):
+                operations = tuple('T' if t else 'F' if d > 0 else 'B' if d < 0 else '-'
+                                   for d, t in zip(movements, toggles))
+                candidates.append((end, operations))
+        for end, operations in reversed(candidates):
+            if count(index, end) == required:
+                program[index:end + 1] = [operations]
+                exposures[index:end + 1] = [exposures[end]]
+                index = max(0, index - 6)
+                break
+        else:
+            index += 1
+    return program
