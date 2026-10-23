@@ -28,6 +28,7 @@ try {
     }
     $report.scored_after = [long]($report.datasets | Select-Object -Skip 2 | Measure-Object after -Sum).Sum
     $report.all_after = [long]($report.datasets | Measure-Object after -Sum).Sum
+    $report.status = 'Verified best found submission'
     $report.recorded_utc = [DateTime]::UtcNow.ToString('o')
     $readme = $readme -replace '(?m)^\| medium \+ large \+ enormous \|.*$', "| medium + large + enormous | $($report.scored_before) | **$($report.scored_after)** |"
     $readme = $readme -replace '(?m)^\| Wszystkie pliki \|.*$', "| Wszystkie pliki | $($report.all_before) | **$($report.all_after)** |"

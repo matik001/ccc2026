@@ -41,6 +41,12 @@ Pozwala to bezpiecznie podłączyć nieruszoną końcówkę. `window=24` ogranic
 długość przebudowywanego fragmentu. Każdy wynik przechodzi symulację całego
 programu, również w oryginalnej reprezentacji planszy.
 
+`symmetry=1` w trybach `windows` i `segments` dopuszcza zamianę ról
+przeciwległych emiterów na końcu przebudowy. Pozycje są odzwierciedlane,
+a instrukcje dalszej części zamieniane wraz z odwróceniem ruchów `F`/`B`.
+Wiązki pozostają równoważne, ale emitery mogą dotrzeć do takiego zakończenia
+krótszą drogą. Zamiana obejmuje tylko emitery przebudowywane w danej próbie.
+
 `explore=1` dopuszcza poprawne rozwiązania tej samej długości i krótkie
 wydłużenia jako punkty startowe następnych prób. Zapisuje wyłącznie najlepszy
 znaleziony wynik; przejściowe pogorszenia nie trafiają do plików wynikowych.
@@ -181,19 +187,19 @@ sumy wszystkich pięciu plików. Punktem odniesienia jest commit `e6d1c9c`, z wy
 15 587 i 15 715 instrukcji. Wszystkie pliki końcowe są sprawdzane logiką
 oryginalnego symulatora z `level-6/sandbox-level-6.html`.
 
-Stan zapisany do wysłania po weryfikacji 553 programów; optymalizacja trwa:
+Najlepszy znaleziony komplet, sprawdzony na wszystkich 553 programach:
 
 | Zestaw | e6d1c9c | Ta wersja |
 | --- | ---: | ---: |
 | example | 20 | 20 |
 | small | 108 | 108 |
 | medium | 5907 | 5831 |
-| large | 5069 | 4818 |
-| enormous | 4611 | 4349 |
-| medium + large + enormous | 15587 | **14998** |
-| Wszystkie pliki | 15715 | **15126** |
+| large | 5069 | 4812 |
+| enormous | 4611 | 4328 |
+| medium + large + enormous | 15587 | **14971** |
+| Wszystkie pliki | 15715 | **15099** |
 
-Poprawiono 212 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
+Poprawiono 216 przypadków; żaden nie ma dłuższego programu niż w bazie `e6d1c9c`.
 Identyczne pliki zapisano również w `python/outputs/`, a komplet pięciu
 plików do zgłoszenia jest w `cpp/level6_submission.zip`.
 

@@ -2,6 +2,32 @@
 
 struct Boundary { array<int, 6> pos{}; int active = 0; };
 
+// Opposite emitters can exchange rays when their offsets and moves are mirrored.
+// Apply the same relabelling to the suffix after reconnecting a search window.
+static Boundary exchange(const Case& cs, Boundary state, int swaps) {
+    for (int axis = 0; axis < 3; ++axis) if (swaps & (1 << axis)) {
+        int a = cs.delta(cs.home(axis), state.pos[axis]);
+        int b = cs.delta(cs.home(axis + 3), state.pos[axis + 3]);
+        state.pos[axis] = (cs.home(axis) - b + cs.L) % cs.L;
+        state.pos[axis + 3] = (cs.home(axis + 3) - a + cs.L) % cs.L;
+        if (((state.active >> axis) ^ (state.active >> (axis + 3))) & 1)
+            state.active ^= (1 << axis) | (1 << (axis + 3));
+    }
+    return state;
+}
+static string exchange(string tick, int swaps) {
+    auto invert = [](char op) { return op == 'F' ? 'B' : op == 'B' ? 'F' : op; };
+    for (int axis = 0; axis < 3; ++axis) if (swaps & (1 << axis)) {
+        char a = tick[axis], b = tick[axis + 3];
+        tick[axis] = invert(b); tick[axis + 3] = invert(a);
+    }
+    return tick;
+}
+static int available_exchanges(int a, int b, int c, int d) {
+    int freed = (1 << a) | (1 << b) | (c < 0 ? 0 : 1 << c) | (d < 0 ? 0 : 1 << d);
+    return (freed & (freed >> 3)) & 7;
+}
+
 // Large-neighbourhood search over complete emitter trajectories. Two to four
 // timelines are fixed; the remaining paths are rebuilt after compressing time.
 // Backward reachability masks safely prune matter that can no longer be fixed.
@@ -308,10 +334,10 @@ static Program compress(const Program& program, int drop, Rng& rng) {
     return result;
 }
 template<int W> static Program optimize_segments(const Case& cs, Program best, int trials, int width,
-                                                int max_drop, int freed, Rng& rng) {
+                                                int max_drop, int freed, bool symmetry, Rng& rng) {
     const size_t before = best.size();
     Case segment_case = cs; segment_case.req = 1;
-    map<string, Program> cache;
+    map<string, pair<Program, int>> cache;
     int spent = 0;
     bool improved;
     do {
@@ -352,25 +378,29 @@ template<int W> static Program optimize_segments(const Case& cs, Program best, i
             if (found == cache.end()) {
                 if (spent >= trials) continue;
                 Program replacement;
+                int swaps = 0;
                 int budget = max(4, trials / max(1, static_cast<int>(order.size())));
                 for (int trial = 0; trial < budget && spent < trials; ++trial, ++spent) {
                     int a = rng.below(6), b, c = -1, d = -1;
                     do { b = rng.below(6); } while (b == a);
                     if (freed >= 3) do { c = rng.below(6); } while (c == a || c == b);
                     if (freed >= 4) do { d = rng.below(6); } while (d == a || d == b || d == c);
+                    swaps = symmetry && !last ? rng.below(8) & available_exchanges(a, b, c, d) : 0;
+                    Boundary endpoint = exchange(cs, end, swaps);
                     int drop = 1 + (trial % 4 == 3 ? rng.below(min(max_drop, static_cast<int>(source.size()) - 1)) : 0);
                     auto draft = compress(source, drop, rng);
                     double alpha = trial % 3 == 0 ? 0.5 : trial % 3 == 1 ? 2 : 6;
-                    TrajectorySearch<W> search(segment_case, move(draft), a, b, width, alpha, 0.4, rng.next(), c, &begin, last ? nullptr : &end, d);
+                    TrajectorySearch<W> search(segment_case, move(draft), a, b, width, alpha, 0.4, rng.next(), c, &begin, last ? nullptr : &endpoint, d);
                     replacement = search.run();
                     if (!replacement.empty()) { ++spent; break; }
                 }
-                found = cache.emplace(key, move(replacement)).first;
+                found = cache.emplace(key, make_pair(move(replacement), swaps)).first;
             }
-            if (found->second.empty()) continue;
+            const auto& [replacement, swaps] = found->second;
+            if (replacement.empty()) continue;
             Program candidate(best.begin(), best.begin() + begin_tick);
-            candidate.insert(candidate.end(), found->second.begin(), found->second.end());
-            candidate.insert(candidate.end(), best.begin() + end_tick, best.end());
+            candidate.insert(candidate.end(), replacement.begin(), replacement.end());
+            for (int t = end_tick; t < static_cast<int>(best.size()); ++t) candidate.push_back(exchange(best[t], swaps));
             if (!cs.finish(candidate)) throw runtime_error("Segment replacement failed full simulation");
             if (candidate.size() < best.size()) { best = move(candidate); improved = true; break; }
         }
@@ -394,7 +424,7 @@ static Program stretch(const Program& program, int extra, Rng& rng) {
 // A window may cross any number of captures, or none. Matching all relevant
 // matter and emitter states makes its unchanged suffix valid by construction.
 template<int W> static Program optimize_windows(const Case& cs, Program best, int trials, int width,
-                                                int max_drop, int freed, int window, bool explore, Rng& rng) {
+                                                int max_drop, int freed, int window, bool explore, bool symmetry, Rng& rng) {
     struct Snapshot { Boundary state; B matter = bzero(); int captures = 0; };
     const size_t before = best.size();
     Program current = best;
@@ -432,15 +462,17 @@ template<int W> static Program optimize_windows(const Case& cs, Program best, in
         if (freed >= 4) do { d = rng.below(6); } while (d == a || d == b || d == c);
         Case section = cs; section.req = snapshots[end].captures - snapshots[begin].captures;
         bool last = end == static_cast<int>(current.size());
+        int swaps = symmetry && !last ? rng.below(8) & available_exchanges(a, b, c, d) : 0;
+        Boundary endpoint = exchange(cs, snapshots[end].state, swaps);
         double alpha = trial % 3 == 0 ? 0.5 : trial % 3 == 1 ? 2 : 6;
         TrajectorySearch<W> search(section, move(draft), a, b, width, alpha, 0.4, rng.next(), c,
-            &snapshots[begin].state, last ? nullptr : &snapshots[end].state, d,
+            &snapshots[begin].state, last ? nullptr : &endpoint, d,
             &snapshots[begin].matter, last ? nullptr : &snapshots[end].matter);
         auto replacement = search.run();
         if (replacement.empty()) continue;
         Program candidate(current.begin(), current.begin() + begin);
         candidate.insert(candidate.end(), replacement.begin(), replacement.end());
-        candidate.insert(candidate.end(), current.begin() + end, current.end());
+        for (int t = end; t < static_cast<int>(current.size()); ++t) candidate.push_back(exchange(current[t], swaps));
         if (!cs.finish(candidate)) throw runtime_error("Window replacement failed full simulation");
         if (candidate.size() < best.size()) best = candidate;
         if (candidate.size() <= current.size()) { current = move(candidate); record(); }
@@ -492,7 +524,7 @@ static vector<string> split(const string& text, char separator = ',') {
 int main(int argc, char** argv) {
     map<string, string> options{{"names", "3-large,4-enormous"}, {"baseline", "cpp/outputs"},
         {"outdir", "cpp/candidates/trajectories"}, {"threads", "3"}, {"width", "200"},
-        {"trials", "40"}, {"drop", "3"}, {"freed", "2"}, {"seed", "1"}, {"cases", ""}, {"mode", "whole"}, {"explore", "0"}, {"minlen", "0"}, {"window", "24"}, {"portfolio", "0"}};
+        {"trials", "40"}, {"drop", "3"}, {"freed", "2"}, {"seed", "1"}, {"cases", ""}, {"mode", "whole"}, {"explore", "0"}, {"minlen", "0"}, {"window", "24"}, {"portfolio", "0"}, {"symmetry", "0"}};
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i]; auto equal = arg.find('=');
         if (equal == string::npos || !options.count(arg.substr(0, equal))) { cerr << "Unknown option: " << arg << '\n'; return 1; }
@@ -552,8 +584,8 @@ int main(int argc, char** argv) {
                 Program candidate;
                 auto run = [&]<int W>() {
                     if (options["mode"] == "windows") return optimize_windows<W>(cs, baseline[i], trials, width, drop, freed,
-                        window, stoi(options["explore"]) != 0, rng);
-                    return options["mode"] == "segments" ? optimize_segments<W>(cs, baseline[i], trials, width, drop, freed, rng) :
+                        window, stoi(options["explore"]) != 0, stoi(options["symmetry"]) != 0, rng);
+                    return options["mode"] == "segments" ? optimize_segments<W>(cs, baseline[i], trials, width, drop, freed, stoi(options["symmetry"]) != 0, rng) :
                                                           optimize<W>(cs, baseline[i], trials, width, drop, freed, stoi(options["explore"]) != 0, rng, starts[i]);
                 };
                 switch ((pc(bor(cs.P, cs.H)) + 63) / 64) {
