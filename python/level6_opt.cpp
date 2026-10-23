@@ -948,9 +948,93 @@ static Program paint_search(const Case& cs, int T, int iterations, Rng& rng, dou
         (void)saved_mv;
     }
     int bad;
-    pm.final_state(boff, ben, bmv, bad);
+    B fin = pm.final_state(boff, ben, bmv, bad);
+    if (getenv("PAINT_DEBUG"))
+        fprintf(stderr, "T=%d missingP=%d dirtyH=%d bad=%d en=%d%d%d\n", T, pc(bandn(cs.P, fin)), pc(band(cs.H, fin)), bad,
+                ben[0], ben[1], ben[2]);
     if (bad) return {};
     return pm.program(boff, ben, bmv);
+}
+
+// ---------------------------------------------------------------- naprawa (SA na calym programie)
+// Program o stalej dlugosci; koszt = brakujace odbiory * W + defekty od ostatniego odbioru
+// (brakujace P + materia w H). Zero = poprawny program. Symulacja przyrostowa od
+// zmienionego ticka (stany po kazdym ticku sa trzymane).
+struct RepairSim {
+    const Case& cs;
+    Program prog;
+    struct St { int pos[6]; int act, acc; B m; };
+    vector<St> st;  // st[t] = stan po t tickach
+    RepairSim(const Case& c, const Program& p) : cs(c), prog(p), st(p.size() + 1) {
+        for (int e = 0; e < 6; e++) st[0].pos[e] = cs.home(e);
+        st[0].act = 0; st[0].acc = 0; st[0].m = bzero();
+        resim(0);
+    }
+    void resim(int from) {
+        B two, three;
+        for (size_t t = from; t < prog.size(); t++) {
+            St x = st[t];
+            for (int e = 0; e < 6; e++) {
+                char op = prog[t][e];
+                if (op == 'F') x.pos[e] = (x.pos[e] + 1) % cs.L;
+                else if (op == 'B') x.pos[e] = (x.pos[e] + cs.L - 1) % cs.L;
+                else if (op == 'T') x.act ^= 1 << e;
+            }
+            if (x.act) { cs.config(x.pos, x.act, two, three); x.m = bandn(bor(x.m, two), three); }
+            if (x.acc < cs.req && beq(band(x.m, cs.P), cs.P) && bnone(band(x.m, cs.H))) { x.acc++; x.m = bandn(x.m, cs.P); }
+            st[t + 1] = x;
+        }
+    }
+    int cost() const {
+        const St& f = st.back();
+        if (f.acc >= cs.req) return 0;
+        return (cs.req - f.acc) * 40 + pc(bandn(cs.P, f.m)) + 2 * pc(band(cs.H, f.m));
+    }
+};
+
+static Program repair(const Case& cs, Program prog, int iterations, Rng& rng, int attempts) {
+    if (!cs.finish(prog)) return {};
+    size_t start = prog.size();
+    int fails = 0;
+    while (fails < attempts && prog.size() > 1) {
+        // Kazdy emiter traci jeden tick (najchetniej bezczynny '-'): jego dalsza sciezka
+        // przesuwa sie o tick, kolejnosc ruchow zostaje.
+        int len = prog.size();
+        Program cand(len - 1, string(6, '-'));
+        for (int e = 0; e < 6; e++) {
+            vector<int> idle;
+            for (int t = 0; t < len; t++) if (prog[t][e] == '-') idle.push_back(t);
+            int drop = idle.empty() ? rng.below(len) : idle[rng.below(idle.size())];
+            for (int t = 0, k = 0; t < len; t++) if (t != drop) cand[k++][e] = prog[t][e];
+        }
+        RepairSim sim(cs, cand);
+        int cost = sim.cost();
+        double t0 = 2.0, t1 = 0.1;
+        int n = cand.size();
+        for (int it = 0; it < iterations && cost > 0; it++) {
+            double temp = t0 * pow(t1 / t0, (double)it / iterations);
+            int e = rng.below(6), t = rng.below(n);
+            double r = rng.uni();
+            // zapamietujemy kolumne emitera e od t (ruchy zmieniaja tylko ja)
+            string saved(n - t, '-');
+            for (int i = t; i < n; i++) saved[i - t] = sim.prog[i][e];
+            if (r < 0.4) sim.prog[t][e] = "FBT-"[rng.below(4)];
+            else if (r < 0.6 && t + 1 < n) swap(sim.prog[t][e], sim.prog[t + 1][e]);
+            else if (r < 0.8) { for (int i = t; i < n - 1; i++) sim.prog[i][e] = saved[i + 1 - t]; sim.prog[n - 1][e] = '-'; }
+            else { for (int i = n - 1; i > t; i--) sim.prog[i][e] = saved[i - 1 - t]; sim.prog[t][e] = '-'; }
+            sim.resim(t);
+            int nc = sim.cost();
+            if (nc <= cost || rng.uni() < exp((cost - nc) / temp)) cost = nc;
+            else { for (int i = t; i < n; i++) sim.prog[i][e] = saved[i - t]; sim.resim(t); }
+        }
+        if (getenv("REPAIR_DEBUG")) fprintf(stderr, "len=%zu start_cost=%d end_cost=%d\n", cand.size(), RepairSim(cs, cand).cost(), cost);
+        if (cost == 0) {
+            Program p = sim.prog;
+            if (cs.finish(p) && p.size() < prog.size()) { prog = p; fails = 0; continue; }
+        }
+        fails++;
+    }
+    return prog.size() < start ? prog : Program{};
 }
 
 // ---------------------------------------------------------------- polerowanie (T5)
@@ -1190,6 +1274,8 @@ int main(int argc, char** argv) {
                             if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; }
                         }
                     }
+                } else if (mode == "repair") {
+                    if (!base[i].empty()) best = repair(cs, base[i], iterations, rng, restarts);
                 } else if (mode == "polish") {
                     if (!base[i].empty()) best = polish(cs, base[i], iterations, rng);
                 }
