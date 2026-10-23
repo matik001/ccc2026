@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'python'))
 from level6 import parse_patterns
 from level5 import simulate
-from level6_retime import shorten_startup, remove_idle_ticks
+from level6_retime import shorten_startup, compress_program
 
 baseline = ROOT / 'python/outputs/level6_before_second_optimization'
 destination = ROOT / 'python/outputs/level6_second_candidate'
@@ -18,7 +18,8 @@ for name in ('fourbeam-results', 'fivebeam-results', 'sixbeam-results',
              'factor-medium64', 'factor-large64', 'dynamic-short',
              'dynamic-two-phase', 'dynamic-three-phase',
              'dynamic-results', 'backward-results', 'sixbeam-toggle-results',
-             'sixbeam-toggle-selected', 'erase-results', 'integrated-results', 'noop-results'):
+             'sixbeam-toggle-selected', 'erase-results', 'integrated-results', 'noop-results',
+             'sixbeam-compress'):
     path = ROOT / 'tmp' / (name + '.json')
     if path.exists():
         try:
@@ -52,7 +53,7 @@ for input_path in sorted((ROOT / 'level-6').glob('in*.txt')):
                 programs[index] = candidate
                 sources[index] = source
     for i, ((r, board, required), program) in enumerate(zip(cases, programs)):
-        programs[i] = remove_idle_ticks(r, board, shorten_startup(r, board, program), required)
+        programs[i] = compress_program(r, board, shorten_startup(r, board, program), required)
         assert simulate(r, board, programs[i]) == required
         assert len(programs[i]) <= old_lengths[i]
     new_lengths = list(map(len, programs))

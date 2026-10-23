@@ -1,0 +1,66 @@
+{
+  "baseline_commit": "717905026539f4f8f72ae137550e815a05cfe35f",
+  "language": "C++20",
+  "datasets": [
+    {
+      "file": "out_level-6_0-example.txt",
+      "cases": 3,
+      "before": 23,
+      "after": 20,
+      "saved": 3,
+      "improved_cases": 1
+    },
+    {
+      "file": "out_level-6_1-small.txt",
+      "cases": 10,
+      "before": 109,
+      "after": 108,
+      "saved": 1,
+      "improved_cases": 1
+    },
+    {
+      "file": "out_level-6_2-medium.txt",
+      "cases": 210,
+      "before": 6073,
+      "after": 5943,
+      "saved": 130,
+      "improved_cases": 44
+    },
+    {
+      "file": "out_level-6_3-large.txt",
+      "cases": 190,
+      "before": 5406,
+      "after": 5135,
+      "saved": 271,
+      "improved_cases": 113
+    },
+    {
+      "file": "out_level-6_4-enormous.txt",
+      "cases": 140,
+      "before": 4958,
+      "after": 4611,
+      "saved": 347,
+      "improved_cases": 112
+    }
+  ],
+  "scored_before": 16437,
+  "scored_after": 15689,
+  "all_before": 16569,
+  "all_after": 15817,
+  "validation": {
+    "engine": "Original JavaScript simulator from level-6/sandbox-level-6.html",
+    "cases": 553,
+    "passed": true
+  },
+  "beam_benchmark": {
+    "cases": "medium 0-9",
+    "width": 100,
+    "settings": "3:0.3:2",
+    "seed": 1,
+    "threads": 1,
+    "before_seconds": 1.606,
+    "after_seconds": 0.726,
+    "change": "Board-sized bitset specialization"
+  },
+  "recorded_utc": "2026-10-23T15:09:29.2824263Z"
+}

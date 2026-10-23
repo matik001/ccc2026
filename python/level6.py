@@ -247,7 +247,7 @@ def generate_program(radius: int, board: list[str], required: int,
     from level6_sixbeam import generate_candidate as sixbeam_candidate
     from level6_dynamic import (generate_short_candidate, generate_two_phase_candidate,
                                 generate_three_phase_candidate)
-    from level6_retime import shorten_startup, remove_idle_ticks
+    from level6_retime import shorten_startup, compress_program
 
     best = generate_point_program(radius, board, required, min(attempts, 32))
 
@@ -268,17 +268,21 @@ def generate_program(radius: int, board: list[str], required: int,
                                 rotations=1000, budget=len(best)))
     if radius <= 8:
         consider(fourbeam_candidate(radius, board, required, attempts=max(4, attempts // 4),
-                                    budget=len(best), rotations=40))
+                                    budget=len(best) + radius, rotations=40))
     if radius <= 5:
         consider(fourbeam_candidate(radius, board, required, attempts=max(4, attempts // 4),
-                                    budget=len(best), beam_count=5, rotations=80))
+                                    budget=len(best) + radius, beam_count=5, rotations=80))
     consider(sixbeam_candidate(radius, board, required, attempts=max(8, attempts // 4),
-                               budget=len(best), rotations=200))
-    consider(generate_short_candidate(radius, board, required, budget=len(best), seconds=0.8))
-    consider(generate_two_phase_candidate(radius, board, required, budget=len(best), seconds=0.8))
-    consider(generate_three_phase_candidate(radius, board, required, budget=len(best), seconds=0.8))
+                               budget=len(best) + radius, rotations=200))
+    consider(generate_short_candidate(radius, board, required, budget=len(best) + radius, seconds=0.8))
+    consider(generate_two_phase_candidate(radius, board, required, budget=len(best) + radius, seconds=0.8))
+    consider(generate_three_phase_candidate(radius, board, required, budget=len(best) + radius, seconds=0.8))
+    cells = sum(row.count('M') for row in board)
+    if radius >= 9 and required <= 2 and len(best) > cells * required * 0.6:
+        from level6_backward import generate_candidate as backward_candidate
+        consider(backward_candidate(radius, board, required, attempts=4, budget=len(best) + radius))
     consider(route_candidate(radius, board, required, incumbent=best))
-    return remove_idle_ticks(radius, board, shorten_startup(radius, board, best), required)
+    return compress_program(radius, board, shorten_startup(radius, board, best), required)
 
 
 def solve(data: str, attempts: int = 64, previous: str | None = None) -> str:

@@ -1138,7 +1138,7 @@
     },
     "out_level-6_3-large.txt": {
       "before": 11774,
-      "after": 7373,
+      "after": 7371,
       "improved_cases": 183,
       "cases": [
         {
@@ -2008,8 +2008,8 @@
         },
         {
           "before": 24,
-          "after": 22,
-          "source": "noop-results"
+          "after": 20,
+          "source": "sixbeam-compress"
         },
         {
           "before": 96,
@@ -2095,7 +2095,7 @@
     },
     "out_level-6_4-enormous.txt": {
       "before": 11780,
-      "after": 7401,
+      "after": 7379,
       "improved_cases": 137,
       "cases": [
         {
@@ -2105,8 +2105,8 @@
         },
         {
           "before": 114,
-          "after": 83,
-          "source": "sixbeam-enormous"
+          "after": 71,
+          "source": "integrated-results"
         },
         {
           "before": 25,
@@ -2420,8 +2420,8 @@
         },
         {
           "before": 316,
-          "after": 272,
-          "source": "backward-results"
+          "after": 262,
+          "source": "sixbeam-compress"
         },
         {
           "before": 60,
@@ -2802,6 +2802,6 @@
     }
   },
   "baseline_total": 36110,
-  "candidate_total": 21642,
+  "candidate_total": 21618,
   "improved_cases": 522
 }

@@ -1,0 +1,315 @@
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+F - - T F T
+T T T - T B
+F B - - F B
+F F B F F B
+F F - F F F
+- - B F B F
+B F B F F -
+B F F - B B
+- F F F F B
+F F F - B B
+B F - F B B
+B B B - - B
+B B F F F B
+- B F - F F
+- B B B F F
+B B B B - -
+- F B - F F
+B B B F - B
+- - B F T B
+F B B F F B
+F B - T T T
+F - F - T B
+- B B - F B
+T - B T - T
+T F - B - T
+F F F B - -
+F - F - F -
+T - F T B B
+- B F B B F
+F T T B F T
+- T - T - -
+F F - - B B
+F T T F F -
+T - - B F F
+F F - - T -
+- - F T F -
+- - F T T B
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
+
+NONE
