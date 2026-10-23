@@ -1,0 +1,2807 @@
+{
+  "datasets": {
+    "out_level-6_0-example.txt": {
+      "before": 44,
+      "after": 24,
+      "improved_cases": 3,
+      "cases": [
+        {
+          "before": 16,
+          "after": 7,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 7,
+          "after": 4,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 21,
+          "after": 13,
+          "source": "fourbeam-results"
+        }
+      ]
+    },
+    "out_level-6_1-small.txt": {
+      "before": 179,
+      "after": 111,
+      "improved_cases": 5,
+      "cases": [
+        {
+          "before": 8,
+          "after": 8,
+          "source": "baseline"
+        },
+        {
+          "before": 2,
+          "after": 2,
+          "source": "baseline"
+        },
+        {
+          "before": 22,
+          "after": 10,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 10,
+          "after": 10,
+          "source": "baseline"
+        },
+        {
+          "before": 10,
+          "after": 7,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 5,
+          "after": 5,
+          "source": "baseline"
+        },
+        {
+          "before": 19,
+          "after": 19,
+          "source": "baseline"
+        },
+        {
+          "before": 28,
+          "after": 19,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 20,
+          "after": 11,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 55,
+          "after": 20,
+          "source": "factor-medium64"
+        }
+      ]
+    },
+    "out_level-6_2-medium.txt": {
+      "before": 12333,
+      "after": 6733,
+      "improved_cases": 194,
+      "cases": [
+        {
+          "before": 72,
+          "after": 44,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 21,
+          "after": 15,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 6,
+          "after": 4,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 90,
+          "after": 37,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 22,
+          "after": 9,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 29,
+          "after": 15,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 39,
+          "after": 27,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 15,
+          "after": 15,
+          "source": "baseline"
+        },
+        {
+          "before": 26,
+          "after": 12,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 155,
+          "after": 89,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 47,
+          "after": 37,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 38,
+          "after": 20,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 40,
+          "after": 27,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 37,
+          "after": 25,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 71,
+          "after": 30,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 42,
+          "after": 20,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 19,
+          "after": 19,
+          "source": "baseline"
+        },
+        {
+          "before": 61,
+          "after": 31,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 99,
+          "after": 30,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 67,
+          "after": 27,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 8,
+          "after": 5,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 105,
+          "after": 53,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 30,
+          "after": 23,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 71,
+          "after": 29,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 40,
+          "after": 39,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 88,
+          "after": 53,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 114,
+          "after": 64,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 19,
+          "after": 13,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 134,
+          "after": 63,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 38,
+          "after": 38,
+          "source": "baseline"
+        },
+        {
+          "before": 99,
+          "after": 58,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 19,
+          "after": 14,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 32,
+          "after": 19,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 96,
+          "after": 58,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 25,
+          "after": 13,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 172,
+          "after": 88,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 12,
+          "after": 7,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 62,
+          "after": 47,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 36,
+          "after": 15,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 38,
+          "after": 20,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 86,
+          "after": 43,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 9,
+          "after": 5,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 16,
+          "after": 12,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 10,
+          "after": 5,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 71,
+          "after": 44,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 13,
+          "after": 12,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 33,
+          "after": 19,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 57,
+          "after": 24,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 78,
+          "after": 61,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 242,
+          "after": 115,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 325,
+          "after": 136,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 42,
+          "after": 21,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 15,
+          "after": 14,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 69,
+          "after": 35,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 21,
+          "after": 10,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 91,
+          "after": 38,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 91,
+          "after": 47,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 62,
+          "after": 38,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 72,
+          "after": 43,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 73,
+          "after": 37,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 71,
+          "after": 30,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 62,
+          "after": 31,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 61,
+          "after": 32,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 11,
+          "after": 7,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 17,
+          "after": 13,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 9,
+          "after": 6,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 42,
+          "after": 32,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 47,
+          "after": 31,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 61,
+          "after": 26,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 6,
+          "after": 6,
+          "source": "baseline"
+        },
+        {
+          "before": 86,
+          "after": 44,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 22,
+          "after": 22,
+          "source": "baseline"
+        },
+        {
+          "before": 130,
+          "after": 51,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 51,
+          "after": 22,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 36,
+          "after": 16,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 11,
+          "after": 7,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 29,
+          "after": 29,
+          "source": "baseline"
+        },
+        {
+          "before": 67,
+          "after": 42,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 49,
+          "after": 26,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 7,
+          "after": 5,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 147,
+          "after": 92,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 14,
+          "after": 6,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 12,
+          "after": 8,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 31,
+          "after": 14,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 38,
+          "after": 30,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 52,
+          "after": 36,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 92,
+          "after": 42,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 31,
+          "after": 15,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 17,
+          "after": 10,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 22,
+          "after": 13,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 66,
+          "after": 40,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 53,
+          "after": 28,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 14,
+          "after": 14,
+          "source": "baseline"
+        },
+        {
+          "before": 69,
+          "after": 35,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 43,
+          "after": 30,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 67,
+          "after": 23,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 19,
+          "after": 7,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 2,
+          "after": 2,
+          "source": "baseline"
+        },
+        {
+          "before": 89,
+          "after": 35,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 37,
+          "after": 22,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 22,
+          "after": 15,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 17,
+          "after": 17,
+          "source": "baseline"
+        },
+        {
+          "before": 6,
+          "after": 4,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 15,
+          "after": 15,
+          "source": "baseline"
+        },
+        {
+          "before": 15,
+          "after": 11,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 65,
+          "after": 30,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 62,
+          "after": 32,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 145,
+          "after": 81,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 35,
+          "after": 23,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 23,
+          "after": 10,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 81,
+          "after": 42,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 53,
+          "after": 28,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 52,
+          "after": 31,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 28,
+          "after": 19,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 81,
+          "after": 34,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 92,
+          "after": 41,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 14,
+          "after": 7,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 26,
+          "after": 13,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 29,
+          "after": 16,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 173,
+          "after": 88,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 57,
+          "after": 29,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 12,
+          "after": 12,
+          "source": "baseline"
+        },
+        {
+          "before": 53,
+          "after": 27,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 45,
+          "after": 24,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 107,
+          "after": 60,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 104,
+          "after": 72,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 94,
+          "after": 41,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 44,
+          "after": 23,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 138,
+          "after": 54,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 31,
+          "after": 14,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 228,
+          "after": 109,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 87,
+          "after": 53,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 152,
+          "after": 70,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 81,
+          "after": 52,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 32,
+          "after": 32,
+          "source": "baseline"
+        },
+        {
+          "before": 21,
+          "after": 12,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 36,
+          "after": 16,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 47,
+          "after": 24,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 122,
+          "after": 77,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 51,
+          "after": 36,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 31,
+          "after": 15,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 85,
+          "after": 55,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 113,
+          "after": 72,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 51,
+          "after": 33,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 198,
+          "after": 78,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 30,
+          "after": 15,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 68,
+          "after": 36,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 91,
+          "after": 33,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 21,
+          "after": 12,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 19,
+          "after": 14,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 5,
+          "after": 4,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 5,
+          "after": 3,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 50,
+          "after": 24,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 174,
+          "after": 79,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 22,
+          "after": 21,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 30,
+          "after": 15,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 77,
+          "after": 40,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 19,
+          "after": 19,
+          "source": "baseline"
+        },
+        {
+          "before": 213,
+          "after": 107,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 58,
+          "after": 39,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 76,
+          "after": 46,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 67,
+          "after": 60,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 121,
+          "after": 53,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 12,
+          "after": 8,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 31,
+          "after": 21,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 72,
+          "after": 32,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 25,
+          "after": 17,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 360,
+          "after": 157,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 41,
+          "after": 18,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 6,
+          "after": 4,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 51,
+          "after": 23,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 91,
+          "after": 46,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 64,
+          "after": 38,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 52,
+          "after": 32,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 19,
+          "after": 14,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 62,
+          "after": 47,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 93,
+          "after": 32,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 26,
+          "after": 14,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 71,
+          "after": 44,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 36,
+          "after": 16,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 111,
+          "after": 63,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 115,
+          "after": 59,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 46,
+          "after": 23,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 51,
+          "after": 31,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 53,
+          "after": 23,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 29,
+          "after": 16,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 83,
+          "after": 39,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 29,
+          "after": 15,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 66,
+          "after": 41,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 16,
+          "after": 11,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 65,
+          "after": 57,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 12,
+          "after": 9,
+          "source": "dynamic-three-phase"
+        },
+        {
+          "before": 69,
+          "after": 38,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 20,
+          "after": 20,
+          "source": "baseline"
+        },
+        {
+          "before": 66,
+          "after": 28,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 26,
+          "after": 25,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 33,
+          "after": 17,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 164,
+          "after": 83,
+          "source": "sixbeam-medium"
+        },
+        {
+          "before": 42,
+          "after": 25,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 16,
+          "after": 13,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 25,
+          "after": 15,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 7,
+          "after": 3,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 16,
+          "after": 16,
+          "source": "baseline"
+        },
+        {
+          "before": 145,
+          "after": 100,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 7,
+          "after": 5,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 42,
+          "after": 22,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 21,
+          "after": 9,
+          "source": "dynamic-two-phase"
+        },
+        {
+          "before": 108,
+          "after": 78,
+          "source": "factor-medium64"
+        },
+        {
+          "before": 29,
+          "after": 19,
+          "source": "dynamic-short"
+        },
+        {
+          "before": 9,
+          "after": 9,
+          "source": "baseline"
+        }
+      ]
+    },
+    "out_level-6_3-large.txt": {
+      "before": 11774,
+      "after": 7373,
+      "improved_cases": 183,
+      "cases": [
+        {
+          "before": 23,
+          "after": 14,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 28,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 109,
+          "after": 53,
+          "source": "integrated-results"
+        },
+        {
+          "before": 12,
+          "after": 8,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 51,
+          "after": 28,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 37,
+          "after": 27,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 83,
+          "after": 55,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 31,
+          "after": 15,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 27,
+          "after": 25,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 37,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 31,
+          "after": 17,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 16,
+          "after": 13,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 35,
+          "after": 27,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 10,
+          "after": 9,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 35,
+          "after": 22,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 31,
+          "after": 16,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 95,
+          "after": 49,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 56,
+          "after": 28,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 70,
+          "after": 39,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 9,
+          "after": 7,
+          "source": "fivebeam-results"
+        },
+        {
+          "before": 16,
+          "after": 10,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 88,
+          "after": 53,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 99,
+          "after": 63,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 34,
+          "after": 24,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 7,
+          "after": 7,
+          "source": "baseline"
+        },
+        {
+          "before": 43,
+          "after": 32,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 117,
+          "after": 82,
+          "source": "factor-large64"
+        },
+        {
+          "before": 76,
+          "after": 38,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 67,
+          "after": 41,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 42,
+          "after": 33,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 21,
+          "after": 15,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 152,
+          "after": 74,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 15,
+          "after": 12,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 23,
+          "after": 12,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 41,
+          "after": 33,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 23,
+          "after": 13,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 47,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 88,
+          "after": 64,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 15,
+          "after": 13,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 25,
+          "after": 17,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 55,
+          "after": 33,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 44,
+          "after": 27,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 27,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 84,
+          "after": 49,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 102,
+          "after": 63,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 45,
+          "after": 34,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 82,
+          "after": 36,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 13,
+          "after": 9,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 45,
+          "after": 33,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 17,
+          "after": 11,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 48,
+          "after": 24,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 78,
+          "after": 39,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 35,
+          "after": 18,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 37,
+          "after": 30,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 177,
+          "after": 82,
+          "source": "factor-large64"
+        },
+        {
+          "before": 35,
+          "after": 28,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 63,
+          "after": 40,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 38,
+          "after": 21,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 57,
+          "after": 50,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 89,
+          "after": 62,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 145,
+          "after": 62,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 9,
+          "after": 9,
+          "source": "baseline"
+        },
+        {
+          "before": 111,
+          "after": 63,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 93,
+          "after": 62,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 304,
+          "after": 304,
+          "source": "baseline"
+        },
+        {
+          "before": 51,
+          "after": 27,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 40,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 19,
+          "after": 19,
+          "source": "baseline"
+        },
+        {
+          "before": 27,
+          "after": 18,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 25,
+          "after": 19,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 15,
+          "after": 10,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 73,
+          "after": 34,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 20,
+          "after": 12,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 95,
+          "after": 73,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 123,
+          "after": 71,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 15,
+          "after": 12,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 149,
+          "after": 71,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 95,
+          "after": 46,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 43,
+          "after": 26,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 34,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 84,
+          "after": 50,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 27,
+          "after": 18,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 16,
+          "after": 13,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 32,
+          "after": 27,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 33,
+          "after": 27,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 46,
+          "after": 27,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 130,
+          "after": 68,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 54,
+          "after": 34,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 74,
+          "after": 54,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 43,
+          "after": 20,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 35,
+          "after": 18,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 110,
+          "after": 80,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 24,
+          "after": 17,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 45,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 135,
+          "after": 63,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 103,
+          "after": 89,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 22,
+          "after": 17,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 28,
+          "after": 19,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 23,
+          "after": 18,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 19,
+          "after": 17,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 38,
+          "after": 38,
+          "source": "baseline"
+        },
+        {
+          "before": 38,
+          "after": 21,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 124,
+          "after": 63,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 243,
+          "after": 190,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 120,
+          "after": 74,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 87,
+          "after": 54,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 67,
+          "after": 45,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 36,
+          "after": 21,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 66,
+          "after": 37,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 92,
+          "after": 79,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 18,
+          "after": 12,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 64,
+          "after": 40,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 22,
+          "after": 14,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 15,
+          "after": 13,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 90,
+          "after": 58,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 35,
+          "after": 20,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 18,
+          "after": 15,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 12,
+          "after": 7,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 183,
+          "after": 95,
+          "source": "factor-large64"
+        },
+        {
+          "before": 109,
+          "after": 69,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 26,
+          "after": 16,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 10,
+          "after": 7,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 88,
+          "after": 53,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 23,
+          "after": 20,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 105,
+          "after": 64,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 29,
+          "after": 19,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 55,
+          "after": 49,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 224,
+          "after": 94,
+          "source": "factor-large64"
+        },
+        {
+          "before": 10,
+          "after": 8,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 16,
+          "after": 11,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 21,
+          "after": 20,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 20,
+          "after": 14,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 45,
+          "after": 27,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 37,
+          "after": 24,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 56,
+          "after": 41,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 82,
+          "after": 59,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 43,
+          "after": 32,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 62,
+          "after": 33,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 46,
+          "after": 27,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 20,
+          "after": 15,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 49,
+          "after": 38,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 299,
+          "after": 155,
+          "source": "factor-large64"
+        },
+        {
+          "before": 33,
+          "after": 17,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 411,
+          "after": 197,
+          "source": "factor-large64"
+        },
+        {
+          "before": 76,
+          "after": 39,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 102,
+          "after": 47,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 144,
+          "after": 77,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 12,
+          "after": 8,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 155,
+          "after": 105,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 50,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 11,
+          "after": 7,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 44,
+          "after": 32,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 18,
+          "after": 14,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 53,
+          "after": 50,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 45,
+          "after": 34,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 57,
+          "after": 36,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 70,
+          "after": 29,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 19,
+          "after": 16,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 61,
+          "after": 40,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 50,
+          "after": 35,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 42,
+          "after": 24,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 45,
+          "after": 33,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 78,
+          "after": 35,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 113,
+          "after": 61,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 64,
+          "after": 34,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 68,
+          "after": 35,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 12,
+          "after": 9,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 69,
+          "after": 42,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 144,
+          "after": 84,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 74,
+          "after": 39,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 42,
+          "after": 30,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 62,
+          "after": 31,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 225,
+          "after": 204,
+          "source": "factor-large64"
+        },
+        {
+          "before": 24,
+          "after": 22,
+          "source": "noop-results"
+        },
+        {
+          "before": 96,
+          "after": 55,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 37,
+          "after": 25,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 11,
+          "after": 8,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 60,
+          "after": 53,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 32,
+          "after": 18,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 35,
+          "after": 23,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 15,
+          "after": 15,
+          "source": "baseline"
+        },
+        {
+          "before": 43,
+          "after": 33,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 128,
+          "after": 63,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 76,
+          "after": 39,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 167,
+          "after": 125,
+          "source": "factor-large64"
+        },
+        {
+          "before": 36,
+          "after": 24,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 10,
+          "after": 10,
+          "source": "baseline"
+        },
+        {
+          "before": 13,
+          "after": 11,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 62,
+          "after": 24,
+          "source": "sixbeam-large"
+        },
+        {
+          "before": 32,
+          "after": 15,
+          "source": "sixbeam-large"
+        }
+      ]
+    },
+    "out_level-6_4-enormous.txt": {
+      "before": 11780,
+      "after": 7401,
+      "improved_cases": 137,
+      "cases": [
+        {
+          "before": 81,
+          "after": 46,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 114,
+          "after": 83,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 25,
+          "after": 25,
+          "source": "baseline"
+        },
+        {
+          "before": 92,
+          "after": 54,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 147,
+          "after": 110,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 108,
+          "after": 60,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 27,
+          "after": 21,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 145,
+          "after": 78,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 132,
+          "after": 72,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 49,
+          "after": 22,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 62,
+          "after": 58,
+          "source": "fourbeam-results"
+        },
+        {
+          "before": 32,
+          "after": 24,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 172,
+          "after": 128,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 61,
+          "after": 40,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 78,
+          "after": 36,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 58,
+          "after": 48,
+          "source": "sixbeam-toggle-selected"
+        },
+        {
+          "before": 89,
+          "after": 83,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 28,
+          "after": 14,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 37,
+          "after": 18,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 79,
+          "after": 38,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 67,
+          "after": 34,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 73,
+          "after": 48,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 53,
+          "after": 30,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 53,
+          "after": 27,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 54,
+          "after": 30,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 59,
+          "after": 31,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 101,
+          "after": 62,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 29,
+          "after": 26,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 104,
+          "after": 41,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 106,
+          "after": 46,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 195,
+          "after": 120,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 72,
+          "after": 37,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 38,
+          "after": 25,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 54,
+          "after": 34,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 25,
+          "after": 19,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 91,
+          "after": 53,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 156,
+          "after": 153,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 65,
+          "after": 40,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 79,
+          "after": 54,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 90,
+          "after": 48,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 75,
+          "after": 43,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 72,
+          "after": 40,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 27,
+          "after": 21,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 54,
+          "after": 32,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 31,
+          "after": 23,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 72,
+          "after": 72,
+          "source": "baseline"
+        },
+        {
+          "before": 43,
+          "after": 33,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 97,
+          "after": 63,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 97,
+          "after": 56,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 131,
+          "after": 60,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 19,
+          "after": 16,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 263,
+          "after": 125,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 57,
+          "after": 35,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 69,
+          "after": 33,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 32,
+          "after": 23,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 104,
+          "after": 46,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 33,
+          "after": 28,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 204,
+          "after": 124,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 91,
+          "after": 56,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 70,
+          "after": 44,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 42,
+          "after": 24,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 56,
+          "after": 35,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 154,
+          "after": 63,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 73,
+          "after": 40,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 316,
+          "after": 272,
+          "source": "backward-results"
+        },
+        {
+          "before": 60,
+          "after": 34,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 102,
+          "after": 56,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 38,
+          "after": 24,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 101,
+          "after": 71,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 72,
+          "after": 47,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 68,
+          "after": 37,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 59,
+          "after": 41,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 100,
+          "after": 44,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 50,
+          "after": 37,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 59,
+          "after": 41,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 51,
+          "after": 24,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 59,
+          "after": 46,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 107,
+          "after": 72,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 54,
+          "after": 50,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 100,
+          "after": 47,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 111,
+          "after": 74,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 55,
+          "after": 37,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 35,
+          "after": 20,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 91,
+          "after": 63,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 112,
+          "after": 63,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 59,
+          "after": 34,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 117,
+          "after": 86,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 32,
+          "after": 21,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 59,
+          "after": 27,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 73,
+          "after": 48,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 52,
+          "after": 30,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 77,
+          "after": 36,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 164,
+          "after": 157,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 100,
+          "after": 49,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 104,
+          "after": 56,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 34,
+          "after": 25,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 44,
+          "after": 44,
+          "source": "baseline"
+        },
+        {
+          "before": 68,
+          "after": 58,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 121,
+          "after": 80,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 141,
+          "after": 71,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 79,
+          "after": 70,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 35,
+          "after": 21,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 35,
+          "after": 24,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 217,
+          "after": 107,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 78,
+          "after": 52,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 40,
+          "after": 26,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 42,
+          "after": 24,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 54,
+          "after": 34,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 88,
+          "after": 55,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 40,
+          "after": 34,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 56,
+          "after": 32,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 88,
+          "after": 48,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 100,
+          "after": 54,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 221,
+          "after": 100,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 267,
+          "after": 159,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 27,
+          "after": 19,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 131,
+          "after": 95,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 196,
+          "after": 113,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 48,
+          "after": 24,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 46,
+          "after": 22,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 42,
+          "after": 36,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 56,
+          "after": 31,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 282,
+          "after": 174,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 44,
+          "after": 23,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 55,
+          "after": 42,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 139,
+          "after": 125,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 102,
+          "after": 53,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 23,
+          "after": 16,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 185,
+          "after": 105,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 33,
+          "after": 32,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 106,
+          "after": 88,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 63,
+          "after": 39,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 148,
+          "after": 109,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 49,
+          "after": 29,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 66,
+          "after": 34,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 97,
+          "after": 44,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 39,
+          "after": 30,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 57,
+          "after": 48,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 68,
+          "after": 33,
+          "source": "sixbeam-enormous"
+        },
+        {
+          "before": 47,
+          "after": 24,
+          "source": "sixbeam-enormous"
+        }
+      ]
+    }
+  },
+  "baseline_total": 36110,
+  "candidate_total": 21642,
+  "improved_cases": 522
+}

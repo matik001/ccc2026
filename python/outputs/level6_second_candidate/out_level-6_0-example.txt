@@ -1,0 +1,26 @@
+F B F B F -
+T T T T T -
+B B - F B -
+- - - - - -
+F F - B F -
+- - - - - -
+B B - F B -
+
+- B - B B B
+- B - B - B
+T T T T T T
+F F F - F -
+
+- B B - - B
+T T T - - T
+F F F - - B
+F B - - - B
+- - - - - -
+B F - - - F
+B B B - - F
+- - - - - -
+F F F - - B
+F B - - - B
+- - - - - -
+B F - - - F
+B B B - - F

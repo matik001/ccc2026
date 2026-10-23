@@ -1,7 +1,7 @@
 """Level 6: generator krotkich programow produkujacych zadane wzory.
 
-Portfolio porownuje trasy dwoch i trzech wiazek, przycinane pelne linie
-oraz wypelnianie gestych wzorow z pozniejszym usuwaniem nadmiaru.
+Portfolio porownuje trasy od dwoch do szesciu wiazek, przycinane pelne linie
+oraz krotkie cykle, ktore tworza i nastepnie usuwaja nadmiarowa materie.
 Nie gwarantuje globalnie najkrotszego programu.
 """
 
@@ -243,11 +243,18 @@ def generate_program(radius: int, board: list[str], required: int,
     from level6_multibeam import generate_candidate as multibeam_candidate
     from level6_routes import generate_candidate as route_candidate
     from level6_static import generate_candidate as raster_candidate
+    from level6_fourbeam import generate_candidate as fourbeam_candidate
+    from level6_sixbeam import generate_candidate as sixbeam_candidate
+    from level6_dynamic import (generate_short_candidate, generate_two_phase_candidate,
+                                generate_three_phase_candidate)
+    from level6_retime import shorten_startup, remove_idle_ticks
 
     best = generate_point_program(radius, board, required, min(attempts, 32))
 
     def consider(candidate):
         nonlocal best
+        if candidate is not None:
+            candidate = shorten_startup(radius, board, candidate)
         if candidate is not None and len(candidate) < len(best):
             # Odbior moze nastapic juz podczas przejscia miedzy konfiguracjami.
             # Sprawdzamy rzeczywista liczbe odbiorow, a nie tylko pokrycie pol.
@@ -259,8 +266,19 @@ def generate_program(radius: int, board: list[str], required: int,
     consider(dense_candidate(radius, board, required, budget=len(best)))
     consider(multibeam_candidate(radius, board, required, attempts=attempts,
                                 rotations=1000, budget=len(best)))
+    if radius <= 8:
+        consider(fourbeam_candidate(radius, board, required, attempts=max(4, attempts // 4),
+                                    budget=len(best), rotations=40))
+    if radius <= 5:
+        consider(fourbeam_candidate(radius, board, required, attempts=max(4, attempts // 4),
+                                    budget=len(best), beam_count=5, rotations=80))
+    consider(sixbeam_candidate(radius, board, required, attempts=max(8, attempts // 4),
+                               budget=len(best), rotations=200))
+    consider(generate_short_candidate(radius, board, required, budget=len(best), seconds=0.8))
+    consider(generate_two_phase_candidate(radius, board, required, budget=len(best), seconds=0.8))
+    consider(generate_three_phase_candidate(radius, board, required, budget=len(best), seconds=0.8))
     consider(route_candidate(radius, board, required, incumbent=best))
-    return best
+    return remove_idle_ticks(radius, board, shorten_startup(radius, board, best), required)
 
 
 def solve(data: str, attempts: int = 64, previous: str | None = None) -> str:
@@ -290,7 +308,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("inputs", nargs="*", type=Path, help="Pliki wejsciowe")
     parser.add_argument("--output-dir", type=Path, default=script_dir / "outputs")
-    parser.add_argument("--attempts", type=int, default=64, help="Liczba prob trasy dla trzech wiazek")
+    parser.add_argument("--attempts", type=int, default=64, help="Intensywnosc przeszukiwania tras")
     args = parser.parse_args()
     if args.attempts < 1:
         parser.error("Liczba prob musi byc dodatnia.")
