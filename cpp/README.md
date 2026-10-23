@@ -1,7 +1,7 @@
 # Level 6 — optymalizator C++20
 
 Uruchamianie z katalogu głównego repozytorium. Kod bazuje na solverze kolegi
-z commita `7179050`; pliki z tego commita są zachowane w `baseline_16k/`.
+z commita `e6d1c9c`; pliki z tego commita są zachowane w `baseline_e6d1c9c/`.
 Najlepsze kompletne rozwiązania znajdują się w `outputs/`.
 
 ## Budowanie i sprawdzanie
@@ -50,6 +50,16 @@ Pozostałe tryby:
 - `polish`: usuwanie kroków i przesuwanie instrukcji przy zachowaniu poprawności.
 - `repair`: skrócenie programu i naprawianie go z dopuszczeniem niepoprawnych stanów pośrednich.
 - `recycle`: wyciąganie cykli z gotowego programu i skracanie drogi do ich rozpoczęcia.
+- `reverse`: skracanie odcinków między odbiorami przez wyszukiwanie od końca.
+- `cyclesa`: ocena cykli przez naruszenia wzoru, bez ograniczenia do prefiksów krótszych niż 8 kroków.
+- `cyclesym`: cykle dopuszczające zamianę przeciwległych emiterów; `segs=3+3,3+4` określa długość okresu i liczbę odbiorów, a ich rozmieszczenie wybiera programowanie dynamiczne.
+
+Eksperymentalne parametry beamu: `optical=2` ogranicza liczbę wariantów
+różniących się wyłącznie pozycjami wyłączonych emiterów, `matter=16` limituje
+liczbę stanów z identyczną materią, `capture=0` równoważy odbiory i częściowo
+utworzony wzór, a `adaptive=1` zmienia karę za materię w sąsiedztwie wraz
+z postępem budowania wzoru. Domyślnie te opcje są wyłączone. Wyniki tych
+wariantów są oceniane osobno; nie każdy eksperyment poprawia rozwiązania.
 
 ## Co zmieniono
 
@@ -76,22 +86,22 @@ tej konkretnej próby; nie oznacza takiego samego przyspieszenia każdego trybu.
 `results.json` zawiera porównanie wszystkich zestawów i liczbę poprawionych
 przypadków. Punktacja medium + large + enormous jest podana oddzielnie od
 sumy wszystkich pięciu plików. Oryginalna wersja z master ma odpowiednio
-16 437 i 16 569 instrukcji. Wszystkie pliki końcowe są sprawdzane logiką
+15 587 i 15 715 instrukcji. Wszystkie pliki końcowe są sprawdzane logiką
 oryginalnego symulatora z `level-6/sandbox-level-6.html`.
 
-Wynik końcowy po weryfikacji 553 programów:
+Stan zapisany do wysłania po weryfikacji 553 programów; optymalizacja trwa:
 
 | Zestaw | Master | Ta wersja |
 | --- | ---: | ---: |
-| example | 23 | 20 |
-| small | 109 | 108 |
-| medium | 6073 | 5943 |
-| large | 5406 | 5135 |
-| enormous | 4958 | 4611 |
-| medium + large + enormous | 16437 | **15689** |
-| Wszystkie pliki | 16569 | **15817** |
+| example | 20 | 20 |
+| small | 108 | 108 |
+| medium | 5907 | 5852 |
+| large | 5069 | 4971 |
+| enormous | 4611 | 4533 |
+| medium + large + enormous | 15587 | **15356** |
+| Wszystkie pliki | 15715 | **15484** |
 
-Poprawiono 271 przypadków; żaden nie ma dłuższego programu niż na master.
+Poprawiono 107 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
 Identyczne pliki zapisano również w `python/outputs/`, a komplet pięciu
 plików do zgłoszenia jest w `cpp/level6_submission.zip`.
 
