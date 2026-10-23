@@ -19,6 +19,9 @@ bash cpp/build_specialized.sh
 ./cpp/level6_trajectories names=3-large mode=segments freed=3 \
   width=400 trials=240 seed=457 threads=3 \
   outdir=cpp/candidates/segments_large457
+./cpp/level6_trajectories names=3-large,4-enormous mode=windows freed=4 \
+  window=24 explore=1 width=500 trials=200 seed=523 threads=3 \
+  outdir=cpp/candidates/windows523
 ./cpp/level6_retime names=3-large,4-enormous width=800 trials=48 \
   seed=439 threads=3 outdir=cpp/candidates/retime439
 ```
@@ -31,10 +34,25 @@ już zakończyć zadania. `mode=segments` przebudowuje odcinki między odbiorami
 zachowując pozycje końcowe potrzebne do podłączenia dalszej części programu.
 Ostatni odcinek może zakończyć się w dowolnej konfiguracji.
 
+`mode=windows` wybiera krótkie fragmenty także wewnątrz budowania wzoru
+i przez granice odbiorów. Odtwarza stan materii na początku fragmentu,
+a na końcu wymaga zgodności materii oraz pozycji i aktywności emiterów.
+Pozwala to bezpiecznie podłączyć nieruszoną końcówkę. `window=24` ogranicza
+długość przebudowywanego fragmentu. Każdy wynik przechodzi symulację całego
+programu, również w oryginalnej reprezentacji planszy.
+
 `explore=1` dopuszcza poprawne rozwiązania tej samej długości i krótkie
 wydłużenia jako punkty startowe następnych prób. Zapisuje wyłącznie najlepszy
 znaleziony wynik; przejściowe pogorszenia nie trafiają do plików wynikowych.
 `minlen=30` kieruje budżet na programy mające przynajmniej 30 kroków.
+`portfolio=1 explore=1` w trybie `whole` dodaje restarty z różnych starszych
+poprawnych rozwiązań znalezionych w katalogach kandydatów i zachowanych
+wersjach bazowych. Dłuższe trasy mogą być skracane stopniowo; nie zastępują
+najlepszego wyniku, dopóki rzeczywiście go nie poprawią.
+
+Wybór kolejnej wiązki wyszukiwania używa częściowego wyboru zamiast sortowania
+wszystkich następców. W razie dużej liczby duplikatów rozszerza rozpatrywany
+prefiks, zachowując ten sam wybór najlepszych unikalnych stanów.
 
 `level6_retime` dobiera od nowa czas wykonania sześciu strumieni instrukcji,
 zachowując ich kolejność w obrębie emitera. Próbuje też usuwać pary ruchów
@@ -65,7 +83,7 @@ pomiary i generowanie wyników wykonano przez WSL.
 ## Wyszukiwanie
 
 ```sh
-./cpp/level6_opt beam baseline=cpp/outputs names=2-medium,3-large,4-enormous \
+./cpp/level6_opt beam baseline=cpp/outputs names=3-large,4-enormous \
   width=300 settings=8:0.5:4,20:0.8:8,5:0.15:3,2:1:2 \
   threads=4 slack=1 seed=31 tag=_run
 
@@ -88,7 +106,7 @@ Pozostałe tryby:
 - `cycle2`: wyczerpujące szukanie cykli długości 2; koszt ogranicza `maxcost`.
 - `polish`: usuwanie kroków i przesuwanie instrukcji przy zachowaniu poprawności.
 - `repair`: skrócenie programu i naprawianie go z dopuszczeniem niepoprawnych stanów pośrednich.
-- `recycle`: wyciąganie cykli z gotowego programu i skracanie drogi do ich rozpoczęcia.
+- `recycle`: wyciąganie cykli z gotowego programu i skracanie drogi do ich rozpoczęcia; długość cyklu ogranicza program wejściowy, bez dawnego limitu 24 kroków.
 - `reverse`: skracanie odcinków między odbiorami przez wyszukiwanie od końca.
 - `reversefree`: skracanie ostatniego odcinka z możliwością zmiany końcowych pozycji emiterów.
 - `cyclesa`: ocena cykli przez naruszenia wzoru, bez ograniczenia do prefiksów krótszych niż 8 kroków.
@@ -170,12 +188,12 @@ Stan zapisany do wysłania po weryfikacji 553 programów; optymalizacja trwa:
 | example | 20 | 20 |
 | small | 108 | 108 |
 | medium | 5907 | 5831 |
-| large | 5069 | 4820 |
-| enormous | 4611 | 4356 |
-| medium + large + enormous | 15587 | **15007** |
-| Wszystkie pliki | 15715 | **15135** |
+| large | 5069 | 4818 |
+| enormous | 4611 | 4349 |
+| medium + large + enormous | 15587 | **14998** |
+| Wszystkie pliki | 15715 | **15126** |
 
-Poprawiono 210 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
+Poprawiono 212 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
 Identyczne pliki zapisano również w `python/outputs/`, a komplet pięciu
 plików do zgłoszenia jest w `cpp/level6_submission.zip`.
 

@@ -19,7 +19,7 @@ template<int W> class TrajectorySearch {
     const Case& cs;
     int emit_a, emit_b, emit_c, emit_d, count, width, length;
     double alpha, potential;
-    Bits target, halo, relevant;
+    Bits target, halo, relevant, initial_matter{}, final_matter{};
     vector<Bits> rays[4], single_future[4];
     vector<FixedFuture> fixed_future;
     vector<vector<Move>> moves;
@@ -66,13 +66,16 @@ template<int W> class TrajectorySearch {
 public:
     TrajectorySearch(const Case& c, Program fixed, int a, int b, int beam_width,
                double halo_weight, double potential_weight, u64 seed, int third = -1,
-               const Boundary* begin = nullptr, const Boundary* end = nullptr, int fourth = -1)
+               const Boundary* begin = nullptr, const Boundary* end = nullptr, int fourth = -1,
+               const B* begin_matter = nullptr, const B* end_matter = nullptr)
         : cs(c), emit_a(a), emit_b(b), emit_c(third), emit_d(fourth), count(2 * (2 * c.n + 1)), width(beam_width), length(fixed.size()),
           alpha(halo_weight), potential(potential_weight), target(smallBits<W>(c.P)), halo(smallBits<W>(c.H)),
           relevant(bor(target, halo)), moves(count), skeleton(move(fixed)), rng(seed) {
         for (int e = 0; e < 6; ++e) start.pos[e] = cs.home(e);
         if (begin) { start = *begin; custom_start = true; }
         if (end) { finish = *end; has_end = true; }
+        if (begin_matter) initial_matter = band(smallBits<W>(*begin_matter), relevant);
+        if (end_matter) final_matter = band(smallBits<W>(*end_matter), relevant);
         for (int e : {emit_a, emit_b, emit_c, emit_d}) if (e >= 0) {
             if (state_code(start, e) < 0 || state_code(start, e) >= count ||
                 (has_end && (state_code(finish, e) < 0 || state_code(finish, e) >= count))) { valid = false; return; }
@@ -139,7 +142,7 @@ public:
         for (int t = length - 1; t >= 0; --t) {
             for (int a = 0; a < count; ++a) for (int b = 0; b < count; ++b) {
                 auto now = config(t, a, b); const auto& later = future(t + 1, a, b);
-                at[a * count + b] = {band(bor(now.two, later.two), target), band(bor(now.three, later.three), halo)};
+                at[a * count + b] = {band(bor(now.two, later.two), relevant), band(bor(now.three, later.three), relevant)};
             }
             for (int a = 0; a < count; ++a) for (int b = 0; b < count; ++b) {
                 Physics value{};
@@ -168,8 +171,10 @@ public:
         int end_c = has_end && emit_c >= 0 ? state_code(finish, emit_c) : 0;
         int end_d = has_end && emit_d >= 0 ? state_code(finish, emit_d) : 0;
         auto possible = emit_c < 0 ? future(0, first_a, first_b) : triple_future(0, first_a, first_b, first_c, first_d);
-        if (!bnone(bandn(target, possible.two))) return {};
+        Bits initial_missing = bandn(cs.req > 0 ? target : final_matter, initial_matter);
+        if (!bnone(bandn(initial_missing, possible.two))) return {};
         Node initial; initial.a = first_a; initial.b = first_b; initial.c = first_c; initial.d = first_d;
+        initial.matter = initial_matter;
         const vector<Move> idle{{first_c, '-'}};
         const vector<Move> fourth_idle{{first_d, '-'}};
         vector<vector<Node>> layers{{initial}};
@@ -203,7 +208,7 @@ public:
                         ++next.captures; next.matter = bandn(next.matter, target);
                     }
                     bool endpoint = !has_end || (t == length - 1 && a.state == end_a && b.state == end_b &&
-                                                 (emit_c < 0 || c.state == end_c) && (emit_d < 0 || d.state == end_d) && bnone(next.matter));
+                                                 (emit_c < 0 || c.state == end_c) && (emit_d < 0 || d.state == end_d) && beq(next.matter, final_matter));
                     if (next.captures >= cs.req && endpoint) {
                             Program result(skeleton.begin(), skeleton.begin() + t + 1);
                             result[t][emit_a] = a.op; result[t][emit_b] = b.op;
@@ -229,16 +234,18 @@ public:
                             (emit_d >= 0 && distance(d.state, end_d) > remaining_steps)) continue;
                     }
                     auto remaining = emit_c < 0 ? future(t + 1, a.state, b.state) : triple_future(t + 1, a.state, b.state, c.state, d.state);
-                    Bits missing = bandn(target, next.matter), dirty = band(halo, next.matter);
-                    if ((next.captures < cs.req && !bnone(bandn(missing, remaining.two))) || !bnone(bandn(dirty, remaining.three))) continue;
+                    bool captured = next.captures >= cs.req;
+                    Bits missing = bandn(captured && has_end ? final_matter : target, next.matter);
+                    Bits dirty = captured && has_end ? bandn(next.matter, final_matter) : band(halo, next.matter);
+                    if ((!bnone(bandn(missing, remaining.two)) && (!captured || has_end)) || !bnone(bandn(dirty, remaining.three))) continue;
                     double pot = 0;
                     for (int k = 0; k < (emit_d >= 0 ? 4 : emit_c < 0 ? 2 : 3); ++k) {
                         int state = k == 0 ? a.state : k == 1 ? b.state : k == 2 ? c.state : d.state;
                         const auto& ray = rays[k][state | 1];
                         pot += pc(band(ray, missing)) + 2 * pc(band(ray, dirty));
                     }
-                    double filled_weight = has_end && next.captures >= cs.req ? -4.0 : 4.0;
-                    next.score = 10000.0 * min(next.captures, cs.req) + filled_weight * pc(band(target, next.matter)) -
+                    double progress = captured && has_end ? -4.0 * pc(missing) : 4.0 * pc(band(target, next.matter));
+                    next.score = 10000.0 * min(next.captures, cs.req) + progress -
                                  4.0 * alpha * pc(dirty) + potential * pot + 0.8 * rng.uni();
                     children.push_back(next);
                     }
@@ -246,13 +253,22 @@ public:
                 }
             }
             if (children.empty()) return {};
-            sort(children.begin(), children.end(), [](const Node& a, const Node& b) { return a.score > b.score; });
             vector<Node> next;
-            unordered_set<u64> seen;
-            for (auto& child : children) {
-                if (!seen.insert(hash(child)).second) continue;
-                next.push_back(move(child));
-                if (static_cast<int>(next.size()) == width) break;
+            auto better = [](const Node& a, const Node& b) { return a.score > b.score; };
+            size_t cutoff = min(children.size(), static_cast<size_t>(width) * 4);
+            for (;;) {
+                if (cutoff < children.size()) nth_element(children.begin(), children.begin() + cutoff, children.end(), better);
+                sort(children.begin(), children.begin() + cutoff, better);
+                unordered_set<u64> seen;
+                next.clear();
+                for (size_t i = 0; i < cutoff; ++i) {
+                    const auto& child = children[i];
+                    if (!seen.insert(hash(child)).second) continue;
+                    next.push_back(child);
+                    if (static_cast<int>(next.size()) == width) break;
+                }
+                if (static_cast<int>(next.size()) == width || cutoff == children.size()) break;
+                cutoff = min(children.size(), cutoff * 2);
             }
             layers.push_back(move(next));
         }
@@ -375,8 +391,64 @@ static Program stretch(const Program& program, int extra, Rng& rng) {
     }
     return result;
 }
+// A window may cross any number of captures, or none. Matching all relevant
+// matter and emitter states makes its unchanged suffix valid by construction.
+template<int W> static Program optimize_windows(const Case& cs, Program best, int trials, int width,
+                                                int max_drop, int freed, int window, bool explore, Rng& rng) {
+    struct Snapshot { Boundary state; B matter = bzero(); int captures = 0; };
+    const size_t before = best.size();
+    Program current = best;
+    vector<Snapshot> snapshots;
+    auto record = [&]() {
+        snapshots.assign(1, {});
+        for (int e = 0; e < 6; ++e) snapshots[0].state.pos[e] = cs.home(e);
+        for (const auto& tick : current) {
+            auto next = snapshots.back();
+            for (int e = 0; e < 6; ++e) {
+                if (tick[e] == 'F') next.state.pos[e] = (next.state.pos[e] + 1) % cs.L;
+                else if (tick[e] == 'B') next.state.pos[e] = (next.state.pos[e] + cs.L - 1) % cs.L;
+                else if (tick[e] == 'T') next.state.active ^= 1 << e;
+            }
+            B two, three; cs.config(next.state.pos.data(), next.state.active, two, three);
+            next.matter = band(bandn(bor(next.matter, two), three), bor(cs.P, cs.H));
+            if (beq(band(next.matter, cs.P), cs.P) && bnone(band(next.matter, cs.H))) {
+                ++next.captures; next.matter = bandn(next.matter, cs.P);
+            }
+            snapshots.push_back(next);
+        }
+    };
+    record();
+    for (int trial = 0; trial < trials && best.size() > 1; ++trial) {
+        if (explore && trial % 32 == 0) { current = best; record(); }
+        int end = trial % 4 == 0 ? current.size() : 2 + rng.below(current.size() - 1);
+        int span = min(end, min(window, 6 + rng.below(max(1, window - 5))));
+        int begin = end - span;
+        int drop = explore && trial % 5 == 4 ? 0 : 1 + (trial % 4 == 3 ? rng.below(min(max_drop, span - 1)) : 0);
+        Program source(current.begin() + begin, current.begin() + end);
+        Program draft = drop ? compress(source, drop, rng) : source;
+        int a = rng.below(6), b, c = -1, d = -1;
+        do { b = rng.below(6); } while (b == a);
+        if (freed >= 3) do { c = rng.below(6); } while (c == a || c == b);
+        if (freed >= 4) do { d = rng.below(6); } while (d == a || d == b || d == c);
+        Case section = cs; section.req = snapshots[end].captures - snapshots[begin].captures;
+        bool last = end == static_cast<int>(current.size());
+        double alpha = trial % 3 == 0 ? 0.5 : trial % 3 == 1 ? 2 : 6;
+        TrajectorySearch<W> search(section, move(draft), a, b, width, alpha, 0.4, rng.next(), c,
+            &snapshots[begin].state, last ? nullptr : &snapshots[end].state, d,
+            &snapshots[begin].matter, last ? nullptr : &snapshots[end].matter);
+        auto replacement = search.run();
+        if (replacement.empty()) continue;
+        Program candidate(current.begin(), current.begin() + begin);
+        candidate.insert(candidate.end(), replacement.begin(), replacement.end());
+        candidate.insert(candidate.end(), current.begin() + end, current.end());
+        if (!cs.finish(candidate)) throw runtime_error("Window replacement failed full simulation");
+        if (candidate.size() < best.size()) best = candidate;
+        if (candidate.size() <= current.size()) { current = move(candidate); record(); }
+    }
+    return best.size() < before ? best : Program{};
+}
 template<int W> static Program optimize(const Case& cs, Program best, int trials, int width, int max_drop,
-                                       int freed, bool explore, Rng& rng) {
+                                       int freed, bool explore, Rng& rng, const vector<Program>& starts) {
     const size_t before = best.size();
     Program current = best;
     unordered_set<u64> visited;
@@ -392,7 +464,9 @@ template<int W> static Program optimize(const Case& cs, Program best, int trials
         auto [a, b] = pairs[(trial + rng.below(pairs.size())) % pairs.size()];
         int drop = 1 + (trial % 4 == 3 ? rng.below(min(max_drop, static_cast<int>(best.size()) - cs.req)) : 0);
         if (!explore || trial % 20 == 0) current = best;
+        if (explore && !starts.empty() && trial % 20 == 0) current = starts[rng.below(starts.size())];
         int length = best.size() - drop;
+        if (explore && !starts.empty() && current.size() > best.size() && trial % 3 != 0) length = current.size() - drop;
         if (explore && trial % 6 >= 4) length = best.size() + (trial % 12 == 5);
         Program draft = static_cast<int>(current.size()) > length ? compress(current, current.size() - length, rng) :
                         static_cast<int>(current.size()) < length ? stretch(current, length - current.size(), rng) : current;
@@ -405,7 +479,8 @@ template<int W> static Program optimize(const Case& cs, Program best, int trials
         auto candidate = search.run();
         if (candidate.empty()) continue;
         if (candidate.size() < best.size()) best = candidate;
-        if (explore && candidate.size() <= best.size() + 2 && visited.insert(signature(candidate)).second) current = move(candidate);
+        if (explore && candidate.size() <= (starts.empty() ? best.size() + 2 : current.size() + 1) &&
+            visited.insert(signature(candidate)).second) current = move(candidate);
     }
     return best.size() < before ? best : Program{};
 }
@@ -417,7 +492,7 @@ static vector<string> split(const string& text, char separator = ',') {
 int main(int argc, char** argv) {
     map<string, string> options{{"names", "3-large,4-enormous"}, {"baseline", "cpp/outputs"},
         {"outdir", "cpp/candidates/trajectories"}, {"threads", "3"}, {"width", "200"},
-        {"trials", "40"}, {"drop", "3"}, {"freed", "2"}, {"seed", "1"}, {"cases", ""}, {"mode", "whole"}, {"explore", "0"}, {"minlen", "0"}};
+        {"trials", "40"}, {"drop", "3"}, {"freed", "2"}, {"seed", "1"}, {"cases", ""}, {"mode", "whole"}, {"explore", "0"}, {"minlen", "0"}, {"window", "24"}, {"portfolio", "0"}};
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i]; auto equal = arg.find('=');
         if (equal == string::npos || !options.count(arg.substr(0, equal))) { cerr << "Unknown option: " << arg << '\n'; return 1; }
@@ -427,7 +502,9 @@ int main(int argc, char** argv) {
     if (min({width, trials, workers, drop}) < 1) return 1;
     int freed = stoi(options["freed"]);
     if (freed < 2 || freed > 4) return 1;
-    if (options["mode"] != "whole" && options["mode"] != "segments") return 1;
+    if (options["mode"] != "whole" && options["mode"] != "segments" && options["mode"] != "windows") return 1;
+    int window = stoi(options["window"]);
+    if (window < 2) return 1;
     int min_length = stoi(options["minlen"]);
     if (min_length < 0) return 1;
     int low = 0, high = INT_MAX;
@@ -441,6 +518,30 @@ int main(int argc, char** argv) {
         string filename = "out_level-6_" + name + ".txt";
         auto baseline = read_programs(options["baseline"] + "/" + filename, cases.size());
         for (size_t i = 0; i < cases.size(); ++i) if (!cases[i].finish(baseline[i])) return 2;
+        vector<vector<Program>> starts(cases.size());
+        if (stoi(options["portfolio"]) != 0) {
+            vector<string> paths{"cpp/outputs", "python/outputs"};
+            for (const string parent : {"cpp/candidates", "python/candidates", "cpp/imported_candidates", "cpp"})
+                if (filesystem::exists(parent)) for (const auto& child : filesystem::directory_iterator(parent))
+                    if (child.is_directory() && (parent != "cpp" || child.path().filename().string().starts_with("baseline_")))
+                        paths.push_back(child.path().string());
+            sort(paths.begin(), paths.end());
+            vector<unordered_set<string>> seen(cases.size());
+            for (const auto& path : paths) if (filesystem::exists(path + "/" + filename)) {
+                auto programs = read_programs(path + "/" + filename, cases.size());
+                for (size_t i = 0; i < cases.size(); ++i) {
+                    auto& program = programs[i];
+                    if (program.empty() || program.size() > baseline[i].size() + max(size_t(6), baseline[i].size() / 6)) continue;
+                    if (!cases[i].finish(program)) continue;
+                    string key; for (const auto& tick : program) key += tick;
+                    if (seen[i].insert(move(key)).second) starts[i].push_back(move(program));
+                }
+            }
+            for (auto& pool : starts) {
+                stable_sort(pool.begin(), pool.end(), [](const Program& a, const Program& b) { return a.size() < b.size(); });
+                if (pool.size() > 32) pool.resize(32);
+            }
+        }
         vector<Program> result(cases.size()); atomic<int> next(0), done(0); mutex output_mutex;
         auto began = chrono::steady_clock::now();
         auto worker = [&]() {
@@ -450,8 +551,10 @@ int main(int argc, char** argv) {
                 const auto& cs = cases[i]; Rng rng(stoull(options["seed"]) * 1009 + i * 31);
                 Program candidate;
                 auto run = [&]<int W>() {
+                    if (options["mode"] == "windows") return optimize_windows<W>(cs, baseline[i], trials, width, drop, freed,
+                        window, stoi(options["explore"]) != 0, rng);
                     return options["mode"] == "segments" ? optimize_segments<W>(cs, baseline[i], trials, width, drop, freed, rng) :
-                                                          optimize<W>(cs, baseline[i], trials, width, drop, freed, stoi(options["explore"]) != 0, rng);
+                                                          optimize<W>(cs, baseline[i], trials, width, drop, freed, stoi(options["explore"]) != 0, rng, starts[i]);
                 };
                 switch ((pc(bor(cs.P, cs.H)) + 63) / 64) {
                     case 1: candidate = run.template operator()<1>(); break;
