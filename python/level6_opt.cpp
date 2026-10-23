@@ -53,8 +53,25 @@ struct Case {
     vector<B> ray[6];
     vector<char> useful[6];
     vector<char> allowed[6];  // pozycje dostepne dla beamu
+    vector<int> coord[6];     // wspolna wspolrzedna linii w osi (para a, a+3) - do kanonizacji
 
+    bool canon_ready = false;
     int home(int e) const { return e * n; }
+    void build_coords() {
+        for (int a = 0; a < 3; a++) {
+            int sgn = 1;
+            int q = (home(a + 3) + 1) % L;
+            for (int sg : {1, -1}) {
+                int p = (home(a) + sg + L) % L;
+                if (useful[a][p] && useful[a + 3][q] && beq(ray[a][p], ray[a + 3][q])) sgn = sg;
+            }
+            for (int p = 0; p < L; p++) {
+                coord[a][p] = delta(home(a), p);
+                coord[a + 3][p] = sgn * delta(home(a + 3), p);
+            }
+        }
+        canon_ready = true;
+    }
     int delta(int a, int b) const { int d = ((b - a) % L + L) % L; return d <= L / 2 ? d : d - L; }
 
     void build() {
@@ -77,6 +94,7 @@ struct Case {
             }
         }
         pcount = pc(P);
+        canon_ready = false;
         // obwod jak level4.border_positions
         vector<pair<int, int>> border;
         int r = n, c = 0;
@@ -96,9 +114,11 @@ struct Case {
                 useful[e][p] = !bnone(ray[e][p]);
             }
             allowed[e].assign(L, 0);
+            coord[e].assign(L, 0);
             for (int p = 0; p < L; p++)
                 allowed[e][p] = useful[e][p] || (g_slack && abs(delta(home(e), p)) <= n);
         }
+        build_coords();
     }
 
     // (dokladnie 2 trafienia, >=3 trafienia)
@@ -219,11 +239,18 @@ struct Node {
 
 struct Opt { char op; int pos; int act; B mask; };
 
-static u64 node_hash(const Node& x) {
+static int g_canon = 1;  // 1: stany rozniace sie zamiana emiterow a <-> a+3 sa tym samym stanem
+
+static u64 node_hash(const Case& cs, const Node& x) {
     u64 h = 1469598103934665603ULL;
     auto mix = [&](u64 v) { h ^= v + 0x9E3779B97F4A7C15ULL + (h << 6) + (h >> 2); h *= 1099511628211ULL; };
-    for (int e = 0; e < 6; e++) mix(x.pos[e]);
-    mix(x.act); mix(x.acc);
+    for (int a = 0; a < 3; a++) {
+        u64 u = (u64)(cs.coord[a][x.pos[a]] + 1000) * 2 + (x.act >> a & 1);
+        u64 v = (u64)(cs.coord[a + 3][x.pos[a + 3]] + 1000) * 2 + (x.act >> (a + 3) & 1);
+        if (g_canon && u > v) swap(u, v);
+        mix(u); mix(v);
+    }
+    mix(x.acc);
     for (int i = 0; i < WD; i++) mix(x.m.w[i]);
     return h;
 }
@@ -391,7 +418,7 @@ static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
             Node nd;
             materialize(ch.parent, ch.i01, ch.i2, nd);
             nd.m = ch.m; nd.acc = ch.acc; nd.score = ch.score;
-            if (!seen.insert(node_hash(nd)).second) continue;
+            if (!seen.insert(node_hash(cs, nd)).second) continue;
             next.push_back(nd);
         }
         if (next.empty()) return {};
@@ -1093,7 +1120,7 @@ int main(int argc, char** argv) {
                                {"width", "100"}, {"settings", "3:0.3:2,8:0.5:4,12:1:3,20:0.8:8,5:0.15:3,2:1:2"},
                                {"ks", "1,2,3,4,5,6,8"}, {"iterations", "20000"}, {"restarts", "3"},
                                {"minreq", "2"}, {"seed", "1"}, {"tag", ""}, {"cases", ""},
-                               {"slack", "0"}, {"noise", "1"}, {"step", "2"}, {"maxcost", "99"}, {"segs", ""},
+                               {"slack", "0"}, {"noise", "1"}, {"canon", "1"}, {"basemul", "1"}, {"widths", "200,400,800,1600,3200"}, {"step", "2"}, {"maxcost", "99"}, {"segs", ""},
                                {"threads", to_string(max(1u, thread::hardware_concurrency()))}};
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -1106,6 +1133,8 @@ int main(int argc, char** argv) {
     u64 seed = stoull(opt["seed"]);
     g_slack = stoi(opt["slack"]);
     g_noise = stod(opt["noise"]);
+    g_canon = stoi(opt["canon"]);
+    double basemul = stod(opt["basemul"]);  // >1: porownania A/B bez obcinania do baseline
     int step = stoi(opt["step"]);
     vector<Settings> settings;
     for (auto& s : split(opt["settings"], ',')) {
@@ -1140,11 +1169,25 @@ int main(int argc, char** argv) {
                 int base_len = base[i].empty() ? 1000000 : base[i].size();
                 Rng rng(seed * 1000003 + i);
                 Program best;
-                int limit = base_len - 1;
+                int limit = (int)(base_len * basemul) - 1;
                 if (mode == "beam") {
                     for (size_t s = 0; s < settings.size(); s++) {
                         Program p = beam(cs, width, settings[s], limit, seed * 7919 + i * 31 + s);
                         if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; }
+                    }
+                } else if (mode == "escalate") {
+                    // Szerokosc rosnie tylko tam, gdzie wciaz cos daje: koniec po dwoch
+                    // kolejnych szerokosciach bez poprawy.
+                    int idle = 0;
+                    for (auto& wtxt : split(opt["widths"], ',')) {
+                        int w = stoi(wtxt);
+                        bool improved = false;
+                        for (size_t si = 0; si < settings.size(); si++) {
+                            Program p = beam(cs, w, settings[si], limit, seed * 7919 + i * 31 + si + 101 * w);
+                            if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; improved = true; }
+                        }
+                        if (improved) idle = 0;
+                        else if (++idle >= 2) break;
                     }
                 } else if (mode == "lns") {
                     // Przebudowa sufiksu: tniemy najlepszy program w ticku t i od tego
@@ -1289,7 +1332,9 @@ int main(int argc, char** argv) {
         int improved = 0;
         for (size_t i = 0; i < cases.size(); i++) {
             old += base[i].size();
-            if (!result[i].empty()) { improved++; now += result[i].size(); } else now += base[i].size();
+            if (!result[i].empty() && result[i].size() < base[i].size()) improved++;
+            if (!result[i].empty()) now += min(result[i].size(), basemul > 1 ? result[i].size() : base[i].size());
+            else now += base[i].size();
         }
         total_old += old; total_new += now;
         printf("%s: %ld -> %ld (poprawione %d/%zu)\n", name.c_str(), old, now, improved, cases.size());
