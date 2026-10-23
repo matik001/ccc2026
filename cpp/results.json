@@ -22,17 +22,17 @@
       "file": "out_level-6_2-medium.txt",
       "cases": 210,
       "before": 5907,
-      "after": 5837,
-      "saved": 70,
-      "improved_cases": 20
+      "after": 5836,
+      "saved": 71,
+      "improved_cases": 21
     },
     {
       "file": "out_level-6_3-large.txt",
       "cases": 190,
       "before": 5069,
-      "after": 4936,
-      "saved": 133,
-      "improved_cases": 65
+      "after": 4931,
+      "saved": 138,
+      "improved_cases": 67
     },
     {
       "file": "out_level-6_4-enormous.txt",
@@ -44,15 +44,15 @@
     }
   ],
   "scored_before": 15587,
-  "scored_after": 15217.0,
+  "scored_after": 15211,
   "all_before": 15715,
-  "all_after": 15345.0,
+  "all_after": 15339,
   "validation": {
     "engine": "Original JavaScript simulator from level-6/sandbox-level-6.html",
     "passed": true,
     "cases": 553
   },
   "status": "Checkpoint; optimization continues",
-  "recorded_utc": "2026-10-23T16:13:36.6265800Z",
+  "recorded_utc": "2026-10-23T16:24:57.8549867Z",
   "merged_remote_commit": "ac2d8e8"
 }

@@ -26,8 +26,8 @@ try {
         $readme = $readme -replace "(?m)^\| $name \|.*$", "| $name | $sumBefore | $sumAfter |"
         Copy-Item -LiteralPath (Join-Path cpp/outputs $entry.file) -Destination (Join-Path python/outputs $entry.file) -Force
     }
-    $report.scored_after = ($report.datasets | Select-Object -Skip 2 | Measure-Object after -Sum).Sum
-    $report.all_after = ($report.datasets | Measure-Object after -Sum).Sum
+    $report.scored_after = [long]($report.datasets | Select-Object -Skip 2 | Measure-Object after -Sum).Sum
+    $report.all_after = [long]($report.datasets | Measure-Object after -Sum).Sum
     $report.recorded_utc = [DateTime]::UtcNow.ToString('o')
     $readme = $readme -replace '(?m)^\| medium \+ large \+ enormous \|.*$', "| medium + large + enormous | $($report.scored_before) | **$($report.scored_after)** |"
     $readme = $readme -replace '(?m)^\| Wszystkie pliki \|.*$', "| Wszystkie pliki | $($report.all_before) | **$($report.all_after)** |"

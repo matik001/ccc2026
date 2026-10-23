@@ -41,10 +41,12 @@ danego przypadku, więc plików z `candidates/` nie należy zgłaszać bez scale
 `merge` symuluje każdego kandydata i zachowuje krótszy poprawny program.
 Lista `sources` może zawierać wiele katalogów rozdzielonych przecinkami.
 `cases=0-19` ogranicza eksperyment do pierwszych 20 przypadków.
+Można też wybrać pojedynczy przypadek (`cases=167`) lub listę (`cases=35,50,167`).
 
 Pozostałe tryby:
 
 - `lns`: przebudowa końcówek istniejących programów; `width`, `settings`, `step`.
+- `graph`: budowa grafu konfiguracji po odbiorach i wybór całej sekwencji przez programowanie dynamiczne; `maxnodes` ogranicza liczbę rozwijanych konfiguracji, a `segmentlimit` długość odcinka (0 dobiera ją z obecnego wyniku).
 - `cycles`: szukanie okresowych sekwencji przez wyżarzanie; `ks`, `iterations`, `restarts`.
 - `cycle2`: wyczerpujące szukanie cykli długości 2; koszt ogranicza `maxcost`.
 - `polish`: usuwanie kroków i przesuwanie instrukcji przy zachowaniu poprawności.
@@ -61,6 +63,17 @@ liczbę stanów z identyczną materią, `capture=0` równoważy odbiory i częś
 utworzony wzór, a `adaptive=1` zmienia karę za materię w sąsiedztwie wraz
 z postępem budowania wzoru. Domyślnie te opcje są wyłączone. Wyniki tych
 wariantów są oceniane osobno; nie każdy eksperyment poprawia rozwiązania.
+
+`cross=1` włącza ocenę potencjalnych przecięć linii emiterów, przeniesioną
+z nowszej wersji kolegi. Opcjonalna czwarta liczba w `settings`, np.
+`3:0.3:2:1`, ustala tę wagę osobno dla danej konfiguracji parametrów.
+
+`./cpp/level6_splice` zbiera odcinki z istniejących wyników i kandydatów,
+utożsamia stany z zamienionymi przeciwległymi emiterami i szuka krótszych
+połączeń przez programowanie dynamiczne. Jest to wersja C++ pomysłu
+`python/level6_splice.py`; domyślnie zapisuje poprawy w
+`cpp/candidates/splice_cpp`. Tak jak inne kandydaty wymagają one scalenia.
+W pierwszej próbie na aktualnym komplecie samo łączenie nie dało poprawy.
 
 ### Dokładne wyszukiwanie z Z3
 
@@ -119,13 +132,13 @@ Stan zapisany do wysłania po weryfikacji 553 programów; optymalizacja trwa:
 | --- | ---: | ---: |
 | example | 20 | 20 |
 | small | 108 | 108 |
-| medium | 5907 | 5837 |
-| large | 5069 | 4936 |
+| medium | 5907 | 5836 |
+| large | 5069 | 4931 |
 | enormous | 4611 | 4444 |
-| medium + large + enormous | 15587 | **15217** |
-| Wszystkie pliki | 15715 | **15345** |
+| medium + large + enormous | 15587 | **15211** |
+| Wszystkie pliki | 15715 | **15339** |
 
-Poprawiono 158 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
+Poprawiono 161 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
 Identyczne pliki zapisano również w `python/outputs/`, a komplet pięciu
 plików do zgłoszenia jest w `cpp/level6_submission.zip`.
 

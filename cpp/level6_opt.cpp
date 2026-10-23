@@ -1,7 +1,7 @@
 #include "level6_core.hpp"
 
 // ---------------------------------------------------------------- beam (T4)
-struct Settings { double alpha, gamma, beta; };
+struct Settings { double alpha, gamma, beta, cross = 0; };
 
 struct Node {
     int pos[6];
@@ -13,6 +13,10 @@ struct Node {
 };
 
 struct Opt { char op; int pos; int act; B mask; };
+struct CaptureCollection {
+    int extra = 1, max_endpoints = 16;
+    vector<pair<Program, Node>> paths;
+};
 
 template<typename SearchState> static u64 node_hash(const SearchState& x, const Case& cs, bool active_only = false) {
     u64 h = 1469598103934665603ULL;
@@ -57,7 +61,7 @@ static Node state_after(const Case& cs, const Program& prefix) {
 // Zwraca same ticki wygenerowane przez beam (bez prefiksu); dlugosc <= limit.
 template<int NW>
 static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 seed, const Node* from = nullptr,
-                    const Program& prefix = {}) {
+                    const Program& prefix = {}, CaptureCollection* captures = nullptr) {
     using BB = SmallB<NW>;
     struct Node {
         int pos[6]; int act, acc; BB m; int parent; char ops[7]; double score;
@@ -70,6 +74,9 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
         for (const auto& mask : cs.ray[e]) rays[e].push_back(smallBits<NW>(mask));
     }
     Rng rng(seed);
+    int first_capture_depth = -1;
+    const int target_captures = captures ? (from ? from->acc : 0) + 1 : cs.req;
+    unordered_set<u64> capture_states;
     const BB relevant = bor(P, H);
     vector<vector<Node>> layers;
     Node start{};
@@ -86,10 +93,11 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
     unordered_set<u64> history;
     if (g_history) history.insert(node_hash(start, cs));
     struct Child { double score; int parent, i01, i2; BB m; int acc; };
-    struct AxisC { int i, j; BB one, two; double pot; };
-    struct PairC { int a, b; BB s1, s2, g3, any; double pot; };
+    struct AxisC { int i, j; BB one, two; double pot; BB line_one{}, line_two{}; };
+    struct PairC { int a, b; BB s1, s2, g3, any; double pot; BB line_one{}, line_two{}, line_three{}, line_any{}; };
     vector<Child> pool, local;
     for (int depth = 0; depth < limit; depth++) {
+        vector<array<int, 3>> finished;
         const vector<Node>& layer = layers.back();
         pool.clear();
         // dziecko z ukonczonym zadaniem: (rodzic, i01, i2)
@@ -122,7 +130,14 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
                 for (int i = 0; i < (int)opts[a].size(); i++)
                     for (int j = 0; j < (int)opts[a + 3].size(); j++) {
                         const BB& x = opts[a][i].mask; const BB& y = opts[a + 3][j].mask;
-                        ax[a][axn[a]++] = {i, j, bxor(x, y), band(x, y), pots[a][i] + pots[a + 3][j]};
+                        auto& option = ax[a][axn[a]++];
+                        option = {i, j, bxor(x, y), band(x, y), pots[a][i] + pots[a + 3][j]};
+                        if (st.cross > 0) {
+                            const BB& first = rays[a][opts[a][i].pos];
+                            const BB& second = rays[a + 3][opts[a + 3][j].pos];
+                            option.line_one = bxor(first, second);
+                            option.line_two = band(first, second);
+                        }
                     }
             }
             auto& pairs = all_pairs[pi];
@@ -137,6 +152,13 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
                     pcand.g3 = bor(band(A.two, u1), band(C.two, u0));
                     pcand.any = bor(bor(pcand.s1, pcand.s2), pcand.g3);
                     pcand.pot = A.pot + C.pot;
+                    if (st.cross > 0) {
+                        BB first = bor(A.line_one, A.line_two), second = bor(C.line_one, C.line_two);
+                        pcand.line_one = bandn(bxor(A.line_one, C.line_one), bor(A.line_two, C.line_two));
+                        pcand.line_two = bor(bor(bandn(A.line_two, second), bandn(C.line_two, first)), band(A.line_one, C.line_one));
+                        pcand.line_three = bor(band(A.line_two, second), band(C.line_two, first));
+                        pcand.line_any = bor(bor(pcand.line_one, pcand.line_two), pcand.line_three);
+                    }
                     pairs.push_back(pcand);
                 }
             auto& third = all_third[pi];
@@ -158,7 +180,11 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
                     if (beq(band(ch.m, P), P) && bnone(band(ch.m, H))) {
                         ch.acc++;
                         ch.m = bandn(ch.m, P);
-                        if (ch.acc == cs.req) { done_parent = pi; done01 = u; done2 = v; break; }
+                        if (ch.acc == target_captures) {
+                            if (!captures) { done_parent = pi; done01 = u; done2 = v; break; }
+                            if (static_cast<int>(finished.size()) < 512) finished.push_back({static_cast<int>(pi), u, v});
+                            continue;
+                        }
                     }
                     int filled = pc(band(ch.m, P));
                     double alpha = st.alpha;
@@ -168,6 +194,16 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
                     }
                     ch.score = ch.acc * (g_capture == 0 ? 4.0 * cs.pcount : g_capture) + 4.0 * filled - 4.0 * alpha * pc(band(ch.m, H)) +
                                st.gamma * (Q.pot + T.pot) + g_noise * rng.uni();
+                    if (st.cross > 0) {
+                        // Colleague's ac2d8e8 heuristic: potential intersections
+                        // after toggling emitters at their current positions.
+                        BB lines = bor(T.line_one, T.line_two);
+                        BB at_least_three = bor(bor(Q.line_three, band(Q.line_two, lines)), band(Q.line_one, T.line_two));
+                        BB at_least_two = bor(bor(bor(bandn(Q.line_two, lines), band(Q.line_one, T.line_one)),
+                                                     bandn(T.line_two, Q.line_any)), at_least_three);
+                        ch.score += st.cross * (pc(band(bandn(P, ch.m), at_least_two)) +
+                                               st.beta * pc(band(band(H, ch.m), at_least_three)));
+                    }
                     ch.parent = pi; ch.i01 = u; ch.i2 = v;
                     local.push_back(ch);
                 }
@@ -204,6 +240,28 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
             out.parent = pi;
             (void)nd;
         };
+        auto reconstruct = [&](const Node& last, int parent) {
+            Program program{string(last.ops)};
+            for (int d = static_cast<int>(layers.size()) - 1; d >= 1; --d) {
+                const Node& node = layers[d][parent];
+                program.push_back(string(node.ops)); parent = node.parent;
+            }
+            reverse(program.begin(), program.end());
+            return program;
+        };
+        if (captures && !finished.empty()) {
+            for (auto [parent, first, second] : finished) {
+                Node last{}; materialize(parent, first, second, last);
+                // All relevant matter is empty immediately after a capture.
+                if (!capture_states.insert(node_hash(last, cs)).second) continue;
+                ::Node end{};
+                copy(last.pos, last.pos + 6, end.pos); end.act = last.act;
+                captures->paths.push_back({reconstruct(last, parent), end});
+                if (static_cast<int>(captures->paths.size()) >= captures->max_endpoints) return {};
+            }
+            if (first_capture_depth < 0) first_capture_depth = depth;
+        }
+        if (captures && first_capture_depth >= 0 && depth - first_capture_depth >= captures->extra) return {};
         if (done_parent >= 0) {
             Node last;
             materialize(done_parent, done01, done2, last);
@@ -254,18 +312,19 @@ static Program beam_impl(const Case& cs, int width, Settings st, int limit, u64 
 }
 
 static Program beam(const Case& cs, int width, Settings st, int limit, u64 seed,
-                    const Node* from = nullptr, const Program& prefix = {}) {
+                    const Node* from = nullptr, const Program& prefix = {}, CaptureCollection* captures = nullptr) {
     int words = (3 * cs.n * (cs.n - 1) + 1 + 63) / 64;
     switch (words) {
-        case 1: return beam_impl<1>(cs, width, st, limit, seed, from, prefix);
-        case 2: return beam_impl<2>(cs, width, st, limit, seed, from, prefix);
-        case 3: return beam_impl<3>(cs, width, st, limit, seed, from, prefix);
-        case 4: return beam_impl<4>(cs, width, st, limit, seed, from, prefix);
-        case 5: return beam_impl<5>(cs, width, st, limit, seed, from, prefix);
-        case 6: return beam_impl<6>(cs, width, st, limit, seed, from, prefix);
-        default: return beam_impl<7>(cs, width, st, limit, seed, from, prefix);
+        case 1: return beam_impl<1>(cs, width, st, limit, seed, from, prefix, captures);
+        case 2: return beam_impl<2>(cs, width, st, limit, seed, from, prefix, captures);
+        case 3: return beam_impl<3>(cs, width, st, limit, seed, from, prefix, captures);
+        case 4: return beam_impl<4>(cs, width, st, limit, seed, from, prefix, captures);
+        case 5: return beam_impl<5>(cs, width, st, limit, seed, from, prefix, captures);
+        case 6: return beam_impl<6>(cs, width, st, limit, seed, from, prefix, captures);
+        default: return beam_impl<7>(cs, width, st, limit, seed, from, prefix, captures);
     }
 }
+#include "level6_graph.hpp"
 // ---------------------------------------------------------------- cykle (T1)
 static vector<string> all_sequences(int k) {
     vector<string> out;
@@ -806,7 +865,7 @@ static vector<string> split(const string& s, char sep) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 2) { fprintf(stderr, "uzycie: level6_opt beam|lns|cycles|cycle2|cyclesa|cyclesym|reverse|reversefree|polish|repair|recycle|merge|verify klucz=wartosc...\n"); return 1; }
+    if (argc < 2) { fprintf(stderr, "uzycie: level6_opt beam|graph|lns|cycles|cycle2|cyclesa|cyclesym|reverse|reversefree|polish|repair|recycle|merge|verify klucz=wartosc...\n"); return 1; }
     string mode = argv[1];
     map<string, string> opt = {{"names", "0-example,1-small,2-medium,3-large,4-enormous"},
                                {"width", "100"}, {"settings", "3:0.3:2,8:0.5:4,12:1:3,20:0.8:8,5:0.15:3,2:1:2"},
@@ -817,7 +876,7 @@ int main(int argc, char** argv) {
                                {"outdir", "cpp/candidates"}, {"sources", ""},
                                {"slack", "0"}, {"noise", "1"}, {"step", "2"}, {"maxcost", "99"},
                                {"progress", "1"}, {"history", "0"}, {"segs", ""}, {"capture", "1000000"}, {"adaptive", "0"},
-                               {"optical", "0"}, {"matter", "0"}};
+                               {"optical", "0"}, {"matter", "0"}, {"cross", "0"}, {"maxnodes", "30"}, {"segmentlimit", "0"}};
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
         size_t eq = a.find('=');
@@ -830,7 +889,7 @@ int main(int argc, char** argv) {
         fprintf(stderr, "threads/width/restarts musza byc dodatnie; iterations >= 0\n");
         return 1;
     }
-    if (mode != "beam" && mode != "cycles" && mode != "cyclesa" && mode != "cyclesym" && mode != "polish" && mode != "repair" && mode != "recycle" && mode != "reverse" && mode != "reversefree" && mode != "merge" && mode != "verify" && mode != "lns" && mode != "cycle2") {
+    if (mode != "beam" && mode != "graph" && mode != "cycles" && mode != "cyclesa" && mode != "cyclesym" && mode != "polish" && mode != "repair" && mode != "recycle" && mode != "reverse" && mode != "reversefree" && mode != "merge" && mode != "verify" && mode != "lns" && mode != "cycle2") {
         fprintf(stderr, "nieznany tryb %s\n", mode.c_str());
         return 1;
     }
@@ -847,8 +906,8 @@ int main(int argc, char** argv) {
     vector<Settings> settings;
     for (auto& s : split(opt["settings"], ',')) {
         auto p = split(s, ':');
-        if (p.size() != 3) { fprintf(stderr, "settings wymaga alpha:gamma:beta\n"); return 1; }
-        settings.push_back({stod(p[0]), stod(p[1]), stod(p[2])});
+        if (p.size() != 3 && p.size() != 4) { fprintf(stderr, "settings wymaga alpha:gamma:beta[:cross]\n"); return 1; }
+        settings.push_back({stod(p[0]), stod(p[1]), stod(p[2]), p.size() == 4 ? stod(p[3]) : stod(opt["cross"])});
     }
     vector<int> ks;
     for (auto& s : split(opt["ks"], ',')) ks.push_back(stoi(s));
@@ -864,7 +923,11 @@ int main(int argc, char** argv) {
         segspecs.push_back(move(segments));
     }
     int lo = 0, hi = INT_MAX;
-    if (!opt["cases"].empty()) { auto p = split(opt["cases"], '-'); lo = stoi(p[0]); hi = p.size() > 1 ? stoi(p[1]) : lo; }
+    set<int> only;
+    if (opt["cases"].find(',') != string::npos) for (auto& value : split(opt["cases"], ',')) only.insert(stoi(value));
+    else if (!opt["cases"].empty()) { auto p = split(opt["cases"], '-'); lo = stoi(p[0]); hi = p.size() > 1 ? stoi(p[1]) : lo; }
+    int max_nodes = stoi(opt["maxnodes"]), segment_limit = stoi(opt["segmentlimit"]);
+    if (max_nodes < 1 || segment_limit < 0) { fprintf(stderr, "maxnodes > 0, segmentlimit >= 0\n"); return 1; }
 
     long total_old = 0, total_new = 0;
     for (auto& name : split(opt["names"], ',')) {
@@ -913,7 +976,7 @@ int main(int argc, char** argv) {
             while (true) {
                 int i = next++;
                 if (i >= (int)cases.size()) break;
-                if (i < lo || i > hi) continue;
+                if (i < lo || i > hi || (!only.empty() && !only.count(i))) continue;
                 const Case& cs = cases[i];
                 int base_len = base[i].empty() ? 1000000 : base[i].size();
                 Rng rng(seed * 1000003 + i);
@@ -924,6 +987,8 @@ int main(int argc, char** argv) {
                         Program p = beam(cs, width, settings[s], limit, seed * 7919 + i * 31 + s);
                         if (!p.empty() && (int)p.size() <= limit) { best = p; limit = p.size() - 1; }
                     }
+                } else if (mode == "graph") {
+                    best = graph_search(cs, base[i], width, settings, max_nodes, segment_limit, seed * 1009 + i * 31);
                 } else if (mode == "lns") {
                     // Przebudowa sufiksu: tniemy najlepszy program w ticku t i od tego
                     // stanu szukamy krotszej koncowki beamem; po poprawie od nowa.
