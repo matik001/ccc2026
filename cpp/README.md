@@ -4,6 +4,40 @@ Uruchamianie z katalogu głównego repozytorium. Kod bazuje na solverze kolegi
 z commita `e6d1c9c`; pliki z tego commita są zachowane w `baseline_e6d1c9c/`.
 Najlepsze kompletne rozwiązania znajdują się w `outputs/`.
 
+Aktualny zakres optymalizacji obejmuje wyłącznie `large` i `enormous`.
+Wyniki wybieramy osobno dla każdego przypadku; poszczególne pliki nie muszą
+pochodzić z jednego solvera. `Small` i `medium` pozostają zamrożone.
+
+## Osobne solvery dla dużych zestawów
+
+```sh
+bash cpp/build_specialized.sh
+./cpp/level6_trajectories names=4-enormous freed=3 explore=1 \
+  width=300 trials=240 drop=4 seed=467 threads=3 \
+  outdir=cpp/candidates/explore_enormous467
+./cpp/level6_trajectories names=3-large mode=segments freed=3 \
+  width=400 trials=240 seed=457 threads=3 \
+  outdir=cpp/candidates/segments_large457
+./cpp/level6_retime names=3-large,4-enormous width=800 trials=48 \
+  seed=439 threads=3 outdir=cpp/candidates/retime439
+```
+
+`level6_trajectories` przebudowuje całe trasy dwóch lub trzech emiterów,
+pozostawiając pozostałe ścieżki jako ograniczenia. Sprawdzenie możliwości
+przyszłego utworzenia i usunięcia materii odrzuca gałęzie, które nie mogą
+już zakończyć zadania. `mode=segments` przebudowuje odcinki między odbiorami,
+zachowując pozycje końcowe potrzebne do podłączenia dalszej części programu.
+Ostatni odcinek może zakończyć się w dowolnej konfiguracji.
+
+`explore=1` dopuszcza poprawne rozwiązania tej samej długości i krótkie
+wydłużenia jako punkty startowe następnych prób. Zapisuje wyłącznie najlepszy
+znaleziony wynik; przejściowe pogorszenia nie trafiają do plików wynikowych.
+
+`level6_retime` dobiera od nowa czas wykonania sześciu strumieni instrukcji,
+zachowując ich kolejność w obrębie emitera. Próbuje też usuwać pary ruchów
+o zerowym łącznym przesunięciu. Oba solvery używają gęstych masek wyłącznie
+istotnych pól i sprawdzają wynik również na oryginalnej reprezentacji planszy.
+
 ## Budowanie i sprawdzanie
 
 Linux / WSL (sprawdzone z GCC 13.3):
@@ -133,12 +167,12 @@ Stan zapisany do wysłania po weryfikacji 553 programów; optymalizacja trwa:
 | example | 20 | 20 |
 | small | 108 | 108 |
 | medium | 5907 | 5832 |
-| large | 5069 | 4887 |
-| enormous | 4611 | 4400 |
-| medium + large + enormous | 15587 | **15119** |
-| Wszystkie pliki | 15715 | **15247** |
+| large | 5069 | 4825 |
+| enormous | 4611 | 4378 |
+| medium + large + enormous | 15587 | **15035** |
+| Wszystkie pliki | 15715 | **15163** |
 
-Poprawiono 183 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
+Poprawiono 201 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
 Identyczne pliki zapisano również w `python/outputs/`, a komplet pięciu
 plików do zgłoszenia jest w `cpp/level6_submission.zip`.
 

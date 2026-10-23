@@ -1,9 +1,11 @@
 #include "level6_packed.hpp"
 
-// Large-neighbourhood search over complete emitter trajectories. Four emitter
-// timelines are fixed; two are rebuilt from scratch after compressing time.
+struct Boundary { array<int, 6> pos{}; int active = 0; };
+
+// Large-neighbourhood search over complete emitter trajectories. Three or four
+// timelines are fixed; the remaining paths are rebuilt after compressing time.
 // Backward reachability masks safely prune matter that can no longer be fixed.
-template<int W> class PairSearch {
+template<int W> class TrajectorySearch {
     using Bits = SmallB<W>;
     struct Move { int state; char op; };
     struct Physics { Bits two, three, one; };
@@ -25,6 +27,12 @@ template<int W> class PairSearch {
     vector<Physics> reachable;
     Program skeleton;
     Rng rng;
+    Boundary start, finish;
+    bool has_end = false, custom_start = false, valid = true;
+    int state_code(const Boundary& boundary, int emitter) const {
+        int offset = cs.delta(cs.home(emitter), boundary.pos[emitter]);
+        return 2 * (offset + cs.n) + ((boundary.active >> emitter) & 1);
+    }
     Physics config(int tick, int a, int b) const {
         const Bits& x = rays[0][a]; const Bits& y = rays[1][b];
         Bits any = bor(x, y), both = band(x, y);
@@ -51,11 +59,19 @@ template<int W> class PairSearch {
         return h;
     }
 public:
-    PairSearch(const Case& c, Program fixed, int a, int b, int beam_width,
-               double halo_weight, double potential_weight, u64 seed, int third = -1)
+    TrajectorySearch(const Case& c, Program fixed, int a, int b, int beam_width,
+               double halo_weight, double potential_weight, u64 seed, int third = -1,
+               const Boundary* begin = nullptr, const Boundary* end = nullptr)
         : cs(c), emit_a(a), emit_b(b), emit_c(third), count(2 * (2 * c.n + 1)), width(beam_width), length(fixed.size()),
           alpha(halo_weight), potential(potential_weight), target(smallBits<W>(c.P)), halo(smallBits<W>(c.H)),
           relevant(bor(target, halo)), moves(count), skeleton(move(fixed)), rng(seed) {
+        for (int e = 0; e < 6; ++e) start.pos[e] = cs.home(e);
+        if (begin) { start = *begin; custom_start = true; }
+        if (end) { finish = *end; has_end = true; }
+        for (int e : {emit_a, emit_b, emit_c}) if (e >= 0) {
+            if (state_code(start, e) < 0 || state_code(start, e) >= count ||
+                (has_end && (state_code(finish, e) < 0 || state_code(finish, e) >= count))) { valid = false; return; }
+        }
         for (int state = 0; state < count; ++state) {
             int offset = state / 2 - cs.n, active = state % 2;
             moves[state].push_back({state, '-'});
@@ -68,8 +84,8 @@ public:
                 rays[k].push_back(active ? smallBits<W>(cs.ray[emitter][raw]) : Bits{});
             }
         }
-        int pos[6], active = 0;
-        for (int e = 0; e < 6; ++e) pos[e] = cs.home(e);
+        int pos[6], active = start.active;
+        copy(start.pos.begin(), start.pos.end(), pos);
         for (const auto& tick : skeleton) {
             Bits one{}, two{}, three{};
             for (int e = 0; e < 6; ++e) {
@@ -88,6 +104,9 @@ public:
             }
             fixed_one.push_back(one); fixed_two.push_back(two); fixed_three.push_back(three);
             fixed_any.push_back(bor(bor(one, two), three));
+        }
+        if (has_end) for (int e = 0; e < 6; ++e) if (e != emit_a && e != emit_b && e != emit_c) {
+            if (pos[e] != finish.pos[e] || ((active >> e) & 1) != ((finish.active >> e) & 1)) { valid = false; return; }
         }
         if (emit_c >= 0) {
             fixed_future.resize(length + 1);
@@ -136,11 +155,15 @@ public:
         }
     }
     Program run() {
-        int home = 2 * cs.n;
-        auto possible = emit_c < 0 ? future(0, home, home) : triple_future(0, home, home, home);
+        if (!valid) return {};
+        int first_a = state_code(start, emit_a), first_b = state_code(start, emit_b);
+        int first_c = emit_c < 0 ? 2 * cs.n : state_code(start, emit_c);
+        int end_a = has_end ? state_code(finish, emit_a) : 0, end_b = has_end ? state_code(finish, emit_b) : 0;
+        int end_c = has_end && emit_c >= 0 ? state_code(finish, emit_c) : 0;
+        auto possible = emit_c < 0 ? future(0, first_a, first_b) : triple_future(0, first_a, first_b, first_c);
         if (!bnone(bandn(target, possible.two))) return {};
-        Node initial; initial.a = initial.b = initial.c = home;
-        const vector<Move> idle{{home, '-'}};
+        Node initial; initial.a = first_a; initial.b = first_b; initial.c = first_c;
+        const vector<Move> idle{{first_c, '-'}};
         vector<vector<Node>> layers{{initial}};
         for (int t = 0; t < length; ++t) {
             vector<Node> children;
@@ -162,7 +185,10 @@ public:
                     next.matter = band(bandn(bor(old.matter, phys.two), phys.three), relevant);
                     if (beq(band(next.matter, target), target) && bnone(band(next.matter, halo))) {
                         ++next.captures; next.matter = bandn(next.matter, target);
-                        if (next.captures == cs.req) {
+                    }
+                    bool endpoint = !has_end || (t == length - 1 && a.state == end_a && b.state == end_b &&
+                                                 (emit_c < 0 || c.state == end_c) && bnone(next.matter));
+                    if (next.captures >= cs.req && endpoint) {
                             Program result(skeleton.begin(), skeleton.begin() + t + 1);
                             result[t][emit_a] = a.op; result[t][emit_b] = b.op;
                             if (emit_c >= 0) result[t][emit_c] = c.op;
@@ -173,21 +199,27 @@ public:
                                 if (emit_c >= 0) result[j][emit_c] = node.op_c;
                                 index = node.parent;
                             }
-                            if (!cs.finish(result)) throw runtime_error("Trajectory reconstruction failed simulation");
+                            if (!custom_start && !cs.finish(result)) throw runtime_error("Trajectory reconstruction failed simulation");
                             return result;
-                        }
                     }
                     if (cs.req - next.captures > length - t - 1) continue;
+                    if (has_end) {
+                        auto distance = [](int from, int to) { return abs(from / 2 - to / 2) + ((from & 1) != (to & 1)); };
+                        int remaining_steps = length - t - 1;
+                        if (distance(a.state, end_a) > remaining_steps || distance(b.state, end_b) > remaining_steps ||
+                            (emit_c >= 0 && distance(c.state, end_c) > remaining_steps)) continue;
+                    }
                     auto remaining = emit_c < 0 ? future(t + 1, a.state, b.state) : triple_future(t + 1, a.state, b.state, c.state);
                     Bits missing = bandn(target, next.matter), dirty = band(halo, next.matter);
-                    if (!bnone(bandn(missing, remaining.two)) || !bnone(bandn(dirty, remaining.three))) continue;
+                    if ((next.captures < cs.req && !bnone(bandn(missing, remaining.two))) || !bnone(bandn(dirty, remaining.three))) continue;
                     double pot = 0;
                     for (int k = 0; k < (emit_c < 0 ? 2 : 3); ++k) {
                         int state = k == 0 ? a.state : k == 1 ? b.state : c.state;
                         const auto& ray = rays[k][state | 1];
                         pot += pc(band(ray, missing)) + 2 * pc(band(ray, dirty));
                     }
-                    next.score = 10000.0 * next.captures + 4.0 * pc(band(target, next.matter)) -
+                    double filled_weight = has_end && next.captures >= cs.req ? -4.0 : 4.0;
+                    next.score = 10000.0 * min(next.captures, cs.req) + filled_weight * pc(band(target, next.matter)) -
                                  4.0 * alpha * pc(dirty) + potential * pot + 0.8 * rng.uni();
                     children.push_back(next);
                     }
@@ -219,6 +251,19 @@ static Program compress(const Program& program, int drop, Rng& rng) {
             for (int i = 0; i < static_cast<int>(column.size()); ++i)
                 if (column[i] == '-' && abs(i - cut) < 8) idle.push_back(i);
             if (idle.empty()) for (int i = 0; i < static_cast<int>(column.size()); ++i) if (column[i] == '-') idle.push_back(i);
+            if (idle.empty()) {
+                vector<pair<int, int>> cancellations;
+                for (int a = 0; a < static_cast<int>(column.size()); ++a)
+                    for (int b = a + 1; b < min(a + 7, static_cast<int>(column.size())); ++b)
+                        if ((column[a] == 'F' && column[b] == 'B') || (column[a] == 'B' && column[b] == 'F') ||
+                            (column[a] == 'T' && column[b] == 'T')) cancellations.push_back({a, b});
+                if (!cancellations.empty()) {
+                    auto [a, b] = cancellations[rng.below(cancellations.size())];
+                    column.erase(column.begin() + b); column.erase(column.begin() + a);
+                    column.insert(column.begin() + min(a, static_cast<int>(column.size())), '-');
+                    continue;
+                }
+            }
             int remove = idle.empty() ? min(cut, static_cast<int>(column.size()) - 1) : idle[rng.below(idle.size())];
             column.erase(column.begin() + remove);
         }
@@ -226,21 +271,119 @@ static Program compress(const Program& program, int drop, Rng& rng) {
     }
     return result;
 }
-template<int W> static Program optimize(const Case& cs, Program best, int trials, int width, int max_drop, int freed, Rng& rng) {
+template<int W> static Program optimize_segments(const Case& cs, Program best, int trials, int width,
+                                                int max_drop, int freed, Rng& rng) {
     const size_t before = best.size();
+    Case segment_case = cs; segment_case.req = 1;
+    map<string, Program> cache;
+    int spent = 0;
+    bool improved;
+    do {
+        improved = false;
+        vector<pair<int, Boundary>> boundaries;
+        Boundary state;
+        for (int e = 0; e < 6; ++e) state.pos[e] = cs.home(e);
+        boundaries.push_back({0, state});
+        B matter = bzero();
+        for (int t = 0; t < static_cast<int>(best.size()); ++t) {
+            for (int e = 0; e < 6; ++e) {
+                if (best[t][e] == 'F') state.pos[e] = (state.pos[e] + 1) % cs.L;
+                else if (best[t][e] == 'B') state.pos[e] = (state.pos[e] + cs.L - 1) % cs.L;
+                else if (best[t][e] == 'T') state.active ^= 1 << e;
+            }
+            B two, three; cs.config(state.pos.data(), state.active, two, three);
+            matter = bandn(bor(matter, two), three);
+            if (beq(band(matter, cs.P), cs.P) && bnone(band(matter, cs.H))) {
+                matter = bandn(matter, cs.P); boundaries.push_back({t + 1, state});
+            }
+        }
+        vector<int> order(boundaries.size() - 1);
+        iota(order.begin(), order.end(), 0);
+        sort(order.begin(), order.end(), [&](int a, int b) {
+            return boundaries[a + 1].first - boundaries[a].first > boundaries[b + 1].first - boundaries[b].first;
+        });
+        for (int index : order) {
+            auto [begin_tick, begin] = boundaries[index];
+            auto [end_tick, end] = boundaries[index + 1];
+            bool last = index + 2 == static_cast<int>(boundaries.size());
+            Program source(best.begin() + begin_tick, best.begin() + end_tick);
+            if (source.size() < 2) continue;
+            string key = last ? "free" : "fixed";
+            key += ":" + to_string(begin.active) + ":" + to_string(end.active);
+            for (int e = 0; e < 6; ++e) key += ":" + to_string(begin.pos[e]) + ":" + to_string(end.pos[e]);
+            for (const auto& tick : source) key += tick;
+            auto found = cache.find(key);
+            if (found == cache.end()) {
+                if (spent >= trials) continue;
+                Program replacement;
+                int budget = max(4, trials / max(1, static_cast<int>(order.size())));
+                for (int trial = 0; trial < budget && spent < trials; ++trial, ++spent) {
+                    int a = rng.below(6), b, c = -1;
+                    do { b = rng.below(6); } while (b == a);
+                    if (freed == 3) do { c = rng.below(6); } while (c == a || c == b);
+                    int drop = 1 + (trial % 4 == 3 ? rng.below(min(max_drop, static_cast<int>(source.size()) - 1)) : 0);
+                    auto draft = compress(source, drop, rng);
+                    double alpha = trial % 3 == 0 ? 0.5 : trial % 3 == 1 ? 2 : 6;
+                    TrajectorySearch<W> search(segment_case, move(draft), a, b, width, alpha, 0.4, rng.next(), c, &begin, last ? nullptr : &end);
+                    replacement = search.run();
+                    if (!replacement.empty()) { ++spent; break; }
+                }
+                found = cache.emplace(key, move(replacement)).first;
+            }
+            if (found->second.empty()) continue;
+            Program candidate(best.begin(), best.begin() + begin_tick);
+            candidate.insert(candidate.end(), found->second.begin(), found->second.end());
+            candidate.insert(candidate.end(), best.begin() + end_tick, best.end());
+            if (!cs.finish(candidate)) throw runtime_error("Segment replacement failed full simulation");
+            if (candidate.size() < best.size()) { best = move(candidate); improved = true; break; }
+        }
+    } while (improved);
+    return best.size() < before ? best : Program{};
+}
+static Program stretch(const Program& program, int extra, Rng& rng) {
+    Program result(program.size() + extra, "------");
+    int cut = rng.below(program.size() + 1);
+    for (int e = 0; e < 6; ++e) {
+        string column;
+        for (const auto& tick : program) column += tick[e];
+        for (int i = 0; i < extra; ++i) {
+            int at = clamp(cut + rng.below(9) - 4, 0, static_cast<int>(column.size()));
+            column.insert(column.begin() + at, '-');
+        }
+        for (size_t t = 0; t < result.size(); ++t) result[t][e] = column[t];
+    }
+    return result;
+}
+template<int W> static Program optimize(const Case& cs, Program best, int trials, int width, int max_drop,
+                                       int freed, bool explore, Rng& rng) {
+    const size_t before = best.size();
+    Program current = best;
+    unordered_set<u64> visited;
+    auto signature = [](const Program& program) {
+        u64 value = 1469598103934665603ULL;
+        for (const auto& tick : program) for (char c : tick) { value ^= c; value *= 1099511628211ULL; }
+        return value;
+    };
+    visited.insert(signature(best));
     vector<pair<int, int>> pairs;
     for (int a = 0; a < 6; ++a) for (int b = a + 1; b < 6; ++b) pairs.push_back({a, b});
     for (int trial = 0; trial < trials && best.size() > static_cast<size_t>(cs.req); ++trial) {
         auto [a, b] = pairs[(trial + rng.below(pairs.size())) % pairs.size()];
         int drop = 1 + (trial % 4 == 3 ? rng.below(min(max_drop, static_cast<int>(best.size()) - cs.req)) : 0);
-        Program draft = compress(best, drop, rng);
-        if (cs.finish(draft)) { best = move(draft); continue; }
+        if (!explore || trial % 20 == 0) current = best;
+        int length = best.size() - drop;
+        if (explore && trial % 6 >= 4) length = best.size() + (trial % 12 == 5);
+        Program draft = static_cast<int>(current.size()) > length ? compress(current, current.size() - length, rng) :
+                        static_cast<int>(current.size()) < length ? stretch(current, length - current.size(), rng) : current;
+        if (cs.finish(draft) && draft.size() < best.size()) { best = draft; current = move(draft); continue; }
         double alpha = trial % 3 == 0 ? 0.5 : trial % 3 == 1 ? 2 : 6;
         int c = -1;
         if (freed == 3) { do { c = rng.below(6); } while (c == a || c == b); }
-        PairSearch<W> search(cs, move(draft), a, b, width, alpha, 0.4, rng.next(), c);
+        TrajectorySearch<W> search(cs, move(draft), a, b, width, alpha, 0.4, rng.next(), c);
         auto candidate = search.run();
-        if (!candidate.empty() && candidate.size() < best.size()) best = move(candidate);
+        if (candidate.empty()) continue;
+        if (candidate.size() < best.size()) best = candidate;
+        if (explore && candidate.size() <= best.size() + 2 && visited.insert(signature(candidate)).second) current = move(candidate);
     }
     return best.size() < before ? best : Program{};
 }
@@ -252,7 +395,7 @@ static vector<string> split(const string& text, char separator = ',') {
 int main(int argc, char** argv) {
     map<string, string> options{{"names", "3-large,4-enormous"}, {"baseline", "cpp/outputs"},
         {"outdir", "cpp/candidates/trajectories"}, {"threads", "3"}, {"width", "200"},
-        {"trials", "40"}, {"drop", "3"}, {"freed", "2"}, {"seed", "1"}, {"cases", ""}};
+        {"trials", "40"}, {"drop", "3"}, {"freed", "2"}, {"seed", "1"}, {"cases", ""}, {"mode", "whole"}, {"explore", "0"}, {"minlen", "0"}};
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i]; auto equal = arg.find('=');
         if (equal == string::npos || !options.count(arg.substr(0, equal))) { cerr << "Unknown option: " << arg << '\n'; return 1; }
@@ -262,8 +405,13 @@ int main(int argc, char** argv) {
     if (min({width, trials, workers, drop}) < 1) return 1;
     int freed = stoi(options["freed"]);
     if (freed != 2 && freed != 3) return 1;
+    if (options["mode"] != "whole" && options["mode"] != "segments") return 1;
+    int min_length = stoi(options["minlen"]);
+    if (min_length < 0) return 1;
     int low = 0, high = INT_MAX;
-    if (!options["cases"].empty()) { auto limits = split(options["cases"], '-'); low = stoi(limits[0]); high = limits.size() > 1 ? stoi(limits[1]) : low; }
+    set<int> selected;
+    if (options["cases"].find(',') != string::npos) for (const auto& value : split(options["cases"])) selected.insert(stoi(value));
+    else if (!options["cases"].empty()) { auto limits = split(options["cases"], '-'); low = stoi(limits[0]); high = limits.size() > 1 ? stoi(limits[1]) : low; }
     for (const auto& name : split(options["names"])) {
         auto original_cases = load_cases("level-6/in_level-6_" + name + ".txt");
         vector<Case> cases;
@@ -276,17 +424,21 @@ int main(int argc, char** argv) {
         auto worker = [&]() {
             for (;;) {
                 int i = next++; if (i >= static_cast<int>(cases.size())) break;
-                if (i < low || i > high) continue;
+                if (i < low || i > high || (!selected.empty() && !selected.count(i)) || static_cast<int>(baseline[i].size()) < min_length) continue;
                 const auto& cs = cases[i]; Rng rng(stoull(options["seed"]) * 1009 + i * 31);
                 Program candidate;
+                auto run = [&]<int W>() {
+                    return options["mode"] == "segments" ? optimize_segments<W>(cs, baseline[i], trials, width, drop, freed, rng) :
+                                                          optimize<W>(cs, baseline[i], trials, width, drop, freed, stoi(options["explore"]) != 0, rng);
+                };
                 switch ((pc(bor(cs.P, cs.H)) + 63) / 64) {
-                    case 1: candidate = optimize<1>(cs, baseline[i], trials, width, drop, freed, rng); break;
-                    case 2: candidate = optimize<2>(cs, baseline[i], trials, width, drop, freed, rng); break;
-                    case 3: candidate = optimize<3>(cs, baseline[i], trials, width, drop, freed, rng); break;
-                    case 4: candidate = optimize<4>(cs, baseline[i], trials, width, drop, freed, rng); break;
-                    case 5: candidate = optimize<5>(cs, baseline[i], trials, width, drop, freed, rng); break;
-                    case 6: candidate = optimize<6>(cs, baseline[i], trials, width, drop, freed, rng); break;
-                    default: candidate = optimize<7>(cs, baseline[i], trials, width, drop, freed, rng);
+                    case 1: candidate = run.template operator()<1>(); break;
+                    case 2: candidate = run.template operator()<2>(); break;
+                    case 3: candidate = run.template operator()<3>(); break;
+                    case 4: candidate = run.template operator()<4>(); break;
+                    case 5: candidate = run.template operator()<5>(); break;
+                    case 6: candidate = run.template operator()<6>(); break;
+                    default: candidate = run.template operator()<7>();
                 }
                 lock_guard<mutex> guard(output_mutex);
                 if (!candidate.empty()) {
