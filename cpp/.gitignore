@@ -11,3 +11,8 @@
 /level6_diverse
 /level6_reverse
 /level6_sym
+/level6_free
+/level6_sat
+/level6_sat_cycle
+/vendor/
+/level6_*.build.*

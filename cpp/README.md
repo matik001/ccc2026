@@ -51,6 +51,7 @@ Pozostałe tryby:
 - `repair`: skrócenie programu i naprawianie go z dopuszczeniem niepoprawnych stanów pośrednich.
 - `recycle`: wyciąganie cykli z gotowego programu i skracanie drogi do ich rozpoczęcia.
 - `reverse`: skracanie odcinków między odbiorami przez wyszukiwanie od końca.
+- `reversefree`: skracanie ostatniego odcinka z możliwością zmiany końcowych pozycji emiterów.
 - `cyclesa`: ocena cykli przez naruszenia wzoru, bez ograniczenia do prefiksów krótszych niż 8 kroków.
 - `cyclesym`: cykle dopuszczające zamianę przeciwległych emiterów; `segs=3+3,3+4` określa długość okresu i liczbę odbiorów, a ich rozmieszczenie wybiera programowanie dynamiczne.
 
@@ -60,6 +61,29 @@ liczbę stanów z identyczną materią, `capture=0` równoważy odbiory i częś
 utworzony wzór, a `adaptive=1` zmienia karę za materię w sąsiedztwie wraz
 z postępem budowania wzoru. Domyślnie te opcje są wyłączone. Wyniki tych
 wariantów są oceniane osobno; nie każdy eksperyment poprawia rozwiązania.
+
+### Dokładne wyszukiwanie z Z3
+
+Opcjonalne solvery są również napisane w C++. Zależność Z3 jest rozpakowywana
+lokalnie w `cpp/vendor/`; główny `level6_opt` jej nie wymaga.
+
+```sh
+bash cpp/setup_z3.sh       # Ubuntu / WSL, bez instalowania pakietów systemowych
+bash cpp/build_sat.sh
+./cpp/level6_sat mode=segments baseline=cpp/outputs windows=6,12,24 \
+  timeout=2500 threads=2 outdir=cpp/candidates/sat_segments
+./cpp/level6_sat_cycle names=2-medium specs=4:1,5:1,6:1 \
+  timeout=15000 threads=2 outdir=cpp/candidates/sat_cycles
+```
+
+`level6_sat` skraca ostatni odbiór (`mode=suffix`) albo odcinki między
+odbiorami (`mode=segments`). Zachowuje nieruszony prefiks, modeluje operacje
+emiterów i tworzenie/usuwanie materii, a gotowy program ponownie symuluje.
+`level6_sat_cycle` szuka zamkniętych cykli, także z zamianą przeciwległych
+emiterów; `specs=5:2` oznacza 5 kroków i co najmniej 2 odbiory.
+`timeout` jest limitem jednej próby w milisekundach. Brak wyniku w limicie
+czasu nie jest dowodem optymalności. Model ogranicza pozycje do dwóch
+boków graniczących z pozycją początkową emitera.
 
 ## Co zmieniono
 
@@ -95,14 +119,18 @@ Stan zapisany do wysłania po weryfikacji 553 programów; optymalizacja trwa:
 | --- | ---: | ---: |
 | example | 20 | 20 |
 | small | 108 | 108 |
-| medium | 5907 | 5852 |
-| large | 5069 | 4971 |
-| enormous | 4611 | 4533 |
-| medium + large + enormous | 15587 | **15356** |
-| Wszystkie pliki | 15715 | **15484** |
+| medium | 5907 | 5837 |
+| large | 5069 | 4936 |
+| enormous | 4611 | 4444 |
+| medium + large + enormous | 15587 | **15217** |
+| Wszystkie pliki | 15715 | **15345** |
 
-Poprawiono 107 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
+Poprawiono 158 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
 Identyczne pliki zapisano również w `python/outputs/`, a komplet pięciu
 plików do zgłoszenia jest w `cpp/level6_submission.zip`.
+
+`cpp/package_results.ps1` sprawdza wyniki oryginalnym symulatorem, odświeża
+obie kopie wyników, tabelę, raport JSON i ZIP oraz porównuje zawartość ZIP
+z plikami źródłowymi. Parametr `-Node` pozwala wskazać ścieżkę do Node.js.
 
 Są to wyniki wyszukiwania heurystycznego; nie stanowią dowodu optymalności.
