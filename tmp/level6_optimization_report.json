@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "file": "out_level-6_0-example.txt",
+      "cases": 3,
+      "before": 65,
+      "after": 44,
+      "saved": 21,
+      "improved_cases": 2
+    },
+    {
+      "file": "out_level-6_1-small.txt",
+      "cases": 10,
+      "before": 324,
+      "after": 179,
+      "saved": 145,
+      "improved_cases": 10
+    },
+    {
+      "file": "out_level-6_2-medium.txt",
+      "cases": 210,
+      "before": 24489,
+      "after": 12333,
+      "saved": 12156,
+      "improved_cases": 202
+    },
+    {
+      "file": "out_level-6_3-large.txt",
+      "cases": 190,
+      "before": 20956,
+      "after": 11774,
+      "saved": 9182,
+      "improved_cases": 189
+    },
+    {
+      "file": "out_level-6_4-enormous.txt",
+      "cases": 140,
+      "before": 19327,
+      "after": 11780,
+      "saved": 7547,
+      "improved_cases": 138
+    }
+  ],
+  "before": 65161,
+  "after": 36110,
+  "improved_cases": 541,
+  "verified_cases": 553,
+  "saved_percent": 44.58341646076641
+}
