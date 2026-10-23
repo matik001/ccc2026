@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(if exist example.txt type example.txt)",
+      "Bash(python test_trajectory.py:*)",
+      "Bash(python:*)",
+      "Read(//c/Users/mateusz.kisiel/Downloads/level5/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
