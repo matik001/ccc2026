@@ -798,7 +798,7 @@ static Program recycle(const Case& cs, const Program& source) {
     Program best = source;
     for (int start = 0; start < static_cast<int>(source.size()); ++start) {
         const auto& a = states[start];
-        for (int period = 1; period <= 24 && start + period <= static_cast<int>(source.size()); ++period) {
+        for (int period = 1; start + period <= static_cast<int>(source.size()); ++period) {
             const auto& b = states[start + period];
             int swaps = 0;
             bool closed = true;

@@ -2,7 +2,7 @@
 
 struct Boundary { array<int, 6> pos{}; int active = 0; };
 
-// Large-neighbourhood search over complete emitter trajectories. Three or four
+// Large-neighbourhood search over complete emitter trajectories. Two to four
 // timelines are fixed; the remaining paths are rebuilt after compressing time.
 // Backward reachability masks safely prune matter that can no longer be fixed.
 template<int W> class TrajectorySearch {
@@ -12,15 +12,15 @@ template<int W> class TrajectorySearch {
     struct FixedFuture { Bits zero{}, one{}, two{}, three{}; };
     struct Node {
         Bits matter{};
-        int a = 0, b = 0, c = 0, captures = 0, parent = -1;
-        char op_a = '-', op_b = '-', op_c = '-';
+        int a = 0, b = 0, c = 0, d = 0, captures = 0, parent = -1;
+        char op_a = '-', op_b = '-', op_c = '-', op_d = '-';
         double score = 0;
     };
     const Case& cs;
-    int emit_a, emit_b, emit_c, count, width, length;
+    int emit_a, emit_b, emit_c, emit_d, count, width, length;
     double alpha, potential;
     Bits target, halo, relevant;
-    vector<Bits> rays[3], single_future[3];
+    vector<Bits> rays[4], single_future[4];
     vector<FixedFuture> fixed_future;
     vector<vector<Move>> moves;
     vector<Bits> fixed_one, fixed_two, fixed_three, fixed_any;
@@ -43,32 +43,37 @@ template<int W> class TrajectorySearch {
         };
     }
     const Physics& future(int tick, int a, int b) const { return reachable[(tick * count + a) * count + b]; }
-    Physics triple_future(int tick, int a, int b, int c) const {
+    Physics triple_future(int tick, int a, int b, int c, int d) const {
         int remaining = length - tick;
         const Bits& x = single_future[0][remaining * count + a];
         const Bits& y = single_future[1][remaining * count + b];
         const Bits& z = single_future[2][remaining * count + c];
         Bits one = bor(bor(x, y), z), two = bor(bor(band(x, y), band(x, z)), band(y, z)), three = band(band(x, y), z);
+        if (emit_d >= 0) {
+            const auto& extra = single_future[3][remaining * count + d];
+            three = bor(three, band(two, extra));
+            two = bor(two, band(one, extra)); one = bor(one, extra);
+        }
         const auto& f = fixed_future[tick];
         return {bor(bor(band(f.zero, two), band(f.one, one)), f.two),
                 bor(bor(bor(f.three, band(f.two, one)), band(f.one, two)), band(f.zero, three)), {}};
     }
     u64 hash(const Node& node) const {
-        u64 h = node.a + 257ULL * node.b + 65537ULL * node.c + 16777259ULL * node.captures;
+        u64 h = node.a + 257ULL * node.b + 65537ULL * node.c + 16777259ULL * node.d + 4294967311ULL * node.captures;
         for (u64 word : node.matter.w) { h ^= word + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2); }
         return h;
     }
 public:
     TrajectorySearch(const Case& c, Program fixed, int a, int b, int beam_width,
                double halo_weight, double potential_weight, u64 seed, int third = -1,
-               const Boundary* begin = nullptr, const Boundary* end = nullptr)
-        : cs(c), emit_a(a), emit_b(b), emit_c(third), count(2 * (2 * c.n + 1)), width(beam_width), length(fixed.size()),
+               const Boundary* begin = nullptr, const Boundary* end = nullptr, int fourth = -1)
+        : cs(c), emit_a(a), emit_b(b), emit_c(third), emit_d(fourth), count(2 * (2 * c.n + 1)), width(beam_width), length(fixed.size()),
           alpha(halo_weight), potential(potential_weight), target(smallBits<W>(c.P)), halo(smallBits<W>(c.H)),
           relevant(bor(target, halo)), moves(count), skeleton(move(fixed)), rng(seed) {
         for (int e = 0; e < 6; ++e) start.pos[e] = cs.home(e);
         if (begin) { start = *begin; custom_start = true; }
         if (end) { finish = *end; has_end = true; }
-        for (int e : {emit_a, emit_b, emit_c}) if (e >= 0) {
+        for (int e : {emit_a, emit_b, emit_c, emit_d}) if (e >= 0) {
             if (state_code(start, e) < 0 || state_code(start, e) >= count ||
                 (has_end && (state_code(finish, e) < 0 || state_code(finish, e) >= count))) { valid = false; return; }
         }
@@ -78,8 +83,8 @@ public:
             if (offset < cs.n) moves[state].push_back({state + 2, 'F'});
             if (offset > -cs.n) moves[state].push_back({state - 2, 'B'});
             moves[state].push_back({state ^ 1, 'T'});
-            for (int k = 0; k < (emit_c < 0 ? 2 : 3); ++k) {
-                int emitter = k == 0 ? emit_a : k == 1 ? emit_b : emit_c;
+            for (int k = 0; k < (emit_d >= 0 ? 4 : emit_c < 0 ? 2 : 3); ++k) {
+                int emitter = k == 0 ? emit_a : k == 1 ? emit_b : k == 2 ? emit_c : emit_d;
                 int raw = (cs.home(emitter) + offset + cs.L) % cs.L;
                 rays[k].push_back(active ? smallBits<W>(cs.ray[emitter][raw]) : Bits{});
             }
@@ -89,7 +94,7 @@ public:
         for (const auto& tick : skeleton) {
             Bits one{}, two{}, three{};
             for (int e = 0; e < 6; ++e) {
-                if (e == emit_a || e == emit_b || e == emit_c) continue;
+                if (e == emit_a || e == emit_b || e == emit_c || e == emit_d) continue;
                 if (tick[e] == 'F') pos[e] = (pos[e] + 1) % cs.L;
                 else if (tick[e] == 'B') pos[e] = (pos[e] + cs.L - 1) % cs.L;
                 else if (tick[e] == 'T') active ^= 1 << e;
@@ -105,7 +110,7 @@ public:
             fixed_one.push_back(one); fixed_two.push_back(two); fixed_three.push_back(three);
             fixed_any.push_back(bor(bor(one, two), three));
         }
-        if (has_end) for (int e = 0; e < 6; ++e) if (e != emit_a && e != emit_b && e != emit_c) {
+        if (has_end) for (int e = 0; e < 6; ++e) if (e != emit_a && e != emit_b && e != emit_c && e != emit_d) {
             if (pos[e] != finish.pos[e] || ((active >> e) & 1) != ((finish.active >> e) & 1)) { valid = false; return; }
         }
         if (emit_c >= 0) {
@@ -115,7 +120,7 @@ public:
                 fixed_future[t] = {bor(later.zero, bandn(relevant, fixed_any[t])), bor(later.one, fixed_one[t]),
                                    bor(later.two, fixed_two[t]), bor(later.three, fixed_three[t])};
             }
-            for (int k = 0; k < 3; ++k) {
+            for (int k = 0; k < (emit_d < 0 ? 3 : 4); ++k) {
                 single_future[k].resize((length + 1) * count);
                 copy(rays[k].begin(), rays[k].end(), single_future[k].begin());
                 for (int steps = 1; steps <= length; ++steps) for (int state = 0; state < count; ++state) {
@@ -158,45 +163,58 @@ public:
         if (!valid) return {};
         int first_a = state_code(start, emit_a), first_b = state_code(start, emit_b);
         int first_c = emit_c < 0 ? 2 * cs.n : state_code(start, emit_c);
+        int first_d = emit_d < 0 ? 2 * cs.n : state_code(start, emit_d);
         int end_a = has_end ? state_code(finish, emit_a) : 0, end_b = has_end ? state_code(finish, emit_b) : 0;
         int end_c = has_end && emit_c >= 0 ? state_code(finish, emit_c) : 0;
-        auto possible = emit_c < 0 ? future(0, first_a, first_b) : triple_future(0, first_a, first_b, first_c);
+        int end_d = has_end && emit_d >= 0 ? state_code(finish, emit_d) : 0;
+        auto possible = emit_c < 0 ? future(0, first_a, first_b) : triple_future(0, first_a, first_b, first_c, first_d);
         if (!bnone(bandn(target, possible.two))) return {};
-        Node initial; initial.a = first_a; initial.b = first_b; initial.c = first_c;
+        Node initial; initial.a = first_a; initial.b = first_b; initial.c = first_c; initial.d = first_d;
         const vector<Move> idle{{first_c, '-'}};
+        const vector<Move> fourth_idle{{first_d, '-'}};
         vector<vector<Node>> layers{{initial}};
         for (int t = 0; t < length; ++t) {
             vector<Node> children;
-            children.reserve(layers.back().size() * (emit_c < 0 ? 16 : 64));
+            children.reserve(layers.back().size() * (emit_d >= 0 ? 256 : emit_c < 0 ? 16 : 64));
             for (int parent = 0; parent < static_cast<int>(layers.back().size()); ++parent) {
                 const auto& old = layers.back()[parent];
                 for (auto a : moves[old.a]) for (auto b : moves[old.b]) {
                     auto pair_physics = config(t, a.state, b.state);
                     for (auto c : (emit_c < 0 ? idle : moves[old.c])) {
-                    auto phys = pair_physics;
+                    auto three_physics = pair_physics;
                     if (emit_c >= 0) {
                         const auto& ray = rays[2][c.state];
-                        phys.two = bor(bandn(pair_physics.two, ray), band(pair_physics.one, ray));
-                        phys.three = bor(pair_physics.three, band(pair_physics.two, ray));
+                        three_physics.two = bor(bandn(pair_physics.two, ray), band(pair_physics.one, ray));
+                        three_physics.three = bor(pair_physics.three, band(pair_physics.two, ray));
+                        three_physics.one = bor(bandn(pair_physics.one, ray), bandn(ray, bor(bor(pair_physics.one, pair_physics.two), pair_physics.three)));
+                    }
+                    for (auto d : (emit_d < 0 ? fourth_idle : moves[old.d])) {
+                    auto phys = three_physics;
+                    if (emit_d >= 0) {
+                        const auto& ray = rays[3][d.state];
+                        phys.two = bor(bandn(three_physics.two, ray), band(three_physics.one, ray));
+                        phys.three = bor(three_physics.three, band(three_physics.two, ray));
                     }
                     Node next;
-                    next.a = a.state; next.b = b.state; next.c = c.state; next.parent = parent;
-                    next.op_a = a.op; next.op_b = b.op; next.op_c = c.op; next.captures = old.captures;
+                    next.a = a.state; next.b = b.state; next.c = c.state; next.d = d.state; next.parent = parent;
+                    next.op_a = a.op; next.op_b = b.op; next.op_c = c.op; next.op_d = d.op; next.captures = old.captures;
                     next.matter = band(bandn(bor(old.matter, phys.two), phys.three), relevant);
                     if (beq(band(next.matter, target), target) && bnone(band(next.matter, halo))) {
                         ++next.captures; next.matter = bandn(next.matter, target);
                     }
                     bool endpoint = !has_end || (t == length - 1 && a.state == end_a && b.state == end_b &&
-                                                 (emit_c < 0 || c.state == end_c) && bnone(next.matter));
+                                                 (emit_c < 0 || c.state == end_c) && (emit_d < 0 || d.state == end_d) && bnone(next.matter));
                     if (next.captures >= cs.req && endpoint) {
                             Program result(skeleton.begin(), skeleton.begin() + t + 1);
                             result[t][emit_a] = a.op; result[t][emit_b] = b.op;
                             if (emit_c >= 0) result[t][emit_c] = c.op;
+                            if (emit_d >= 0) result[t][emit_d] = d.op;
                             int index = parent;
                             for (int j = t - 1; j >= 0; --j) {
                                 const auto& node = layers[j + 1][index];
                                 result[j][emit_a] = node.op_a; result[j][emit_b] = node.op_b;
                                 if (emit_c >= 0) result[j][emit_c] = node.op_c;
+                                if (emit_d >= 0) result[j][emit_d] = node.op_d;
                                 index = node.parent;
                             }
                             if (!custom_start && !cs.finish(result)) throw runtime_error("Trajectory reconstruction failed simulation");
@@ -207,14 +225,15 @@ public:
                         auto distance = [](int from, int to) { return abs(from / 2 - to / 2) + ((from & 1) != (to & 1)); };
                         int remaining_steps = length - t - 1;
                         if (distance(a.state, end_a) > remaining_steps || distance(b.state, end_b) > remaining_steps ||
-                            (emit_c >= 0 && distance(c.state, end_c) > remaining_steps)) continue;
+                            (emit_c >= 0 && distance(c.state, end_c) > remaining_steps) ||
+                            (emit_d >= 0 && distance(d.state, end_d) > remaining_steps)) continue;
                     }
-                    auto remaining = emit_c < 0 ? future(t + 1, a.state, b.state) : triple_future(t + 1, a.state, b.state, c.state);
+                    auto remaining = emit_c < 0 ? future(t + 1, a.state, b.state) : triple_future(t + 1, a.state, b.state, c.state, d.state);
                     Bits missing = bandn(target, next.matter), dirty = band(halo, next.matter);
                     if ((next.captures < cs.req && !bnone(bandn(missing, remaining.two))) || !bnone(bandn(dirty, remaining.three))) continue;
                     double pot = 0;
-                    for (int k = 0; k < (emit_c < 0 ? 2 : 3); ++k) {
-                        int state = k == 0 ? a.state : k == 1 ? b.state : c.state;
+                    for (int k = 0; k < (emit_d >= 0 ? 4 : emit_c < 0 ? 2 : 3); ++k) {
+                        int state = k == 0 ? a.state : k == 1 ? b.state : k == 2 ? c.state : d.state;
                         const auto& ray = rays[k][state | 1];
                         pot += pc(band(ray, missing)) + 2 * pc(band(ray, dirty));
                     }
@@ -222,6 +241,7 @@ public:
                     next.score = 10000.0 * min(next.captures, cs.req) + filled_weight * pc(band(target, next.matter)) -
                                  4.0 * alpha * pc(dirty) + potential * pot + 0.8 * rng.uni();
                     children.push_back(next);
+                    }
                     }
                 }
             }
@@ -318,13 +338,14 @@ template<int W> static Program optimize_segments(const Case& cs, Program best, i
                 Program replacement;
                 int budget = max(4, trials / max(1, static_cast<int>(order.size())));
                 for (int trial = 0; trial < budget && spent < trials; ++trial, ++spent) {
-                    int a = rng.below(6), b, c = -1;
+                    int a = rng.below(6), b, c = -1, d = -1;
                     do { b = rng.below(6); } while (b == a);
-                    if (freed == 3) do { c = rng.below(6); } while (c == a || c == b);
+                    if (freed >= 3) do { c = rng.below(6); } while (c == a || c == b);
+                    if (freed >= 4) do { d = rng.below(6); } while (d == a || d == b || d == c);
                     int drop = 1 + (trial % 4 == 3 ? rng.below(min(max_drop, static_cast<int>(source.size()) - 1)) : 0);
                     auto draft = compress(source, drop, rng);
                     double alpha = trial % 3 == 0 ? 0.5 : trial % 3 == 1 ? 2 : 6;
-                    TrajectorySearch<W> search(segment_case, move(draft), a, b, width, alpha, 0.4, rng.next(), c, &begin, last ? nullptr : &end);
+                    TrajectorySearch<W> search(segment_case, move(draft), a, b, width, alpha, 0.4, rng.next(), c, &begin, last ? nullptr : &end, d);
                     replacement = search.run();
                     if (!replacement.empty()) { ++spent; break; }
                 }
@@ -377,9 +398,10 @@ template<int W> static Program optimize(const Case& cs, Program best, int trials
                         static_cast<int>(current.size()) < length ? stretch(current, length - current.size(), rng) : current;
         if (cs.finish(draft) && draft.size() < best.size()) { best = draft; current = move(draft); continue; }
         double alpha = trial % 3 == 0 ? 0.5 : trial % 3 == 1 ? 2 : 6;
-        int c = -1;
-        if (freed == 3) { do { c = rng.below(6); } while (c == a || c == b); }
-        TrajectorySearch<W> search(cs, move(draft), a, b, width, alpha, 0.4, rng.next(), c);
+        int c = -1, d = -1;
+        if (freed >= 3) { do { c = rng.below(6); } while (c == a || c == b); }
+        if (freed >= 4) { do { d = rng.below(6); } while (d == a || d == b || d == c); }
+        TrajectorySearch<W> search(cs, move(draft), a, b, width, alpha, 0.4, rng.next(), c, nullptr, nullptr, d);
         auto candidate = search.run();
         if (candidate.empty()) continue;
         if (candidate.size() < best.size()) best = candidate;
@@ -404,7 +426,7 @@ int main(int argc, char** argv) {
     int width = stoi(options["width"]), trials = stoi(options["trials"]), workers = stoi(options["threads"]), drop = stoi(options["drop"]);
     if (min({width, trials, workers, drop}) < 1) return 1;
     int freed = stoi(options["freed"]);
-    if (freed != 2 && freed != 3) return 1;
+    if (freed < 2 || freed > 4) return 1;
     if (options["mode"] != "whole" && options["mode"] != "segments") return 1;
     int min_length = stoi(options["minlen"]);
     if (min_length < 0) return 1;

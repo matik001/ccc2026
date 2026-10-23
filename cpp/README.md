@@ -6,7 +6,8 @@ Najlepsze kompletne rozwiązania znajdują się w `outputs/`.
 
 Aktualny zakres optymalizacji obejmuje wyłącznie `large` i `enormous`.
 Wyniki wybieramy osobno dla każdego przypadku; poszczególne pliki nie muszą
-pochodzić z jednego solvera. `Small` i `medium` pozostają zamrożone.
+pochodzić z jednego solvera. Dla `small` i `medium` nie uruchamiamy nowych
+poszukiwań; gotowe lepsze wyniki pobrane z master są zachowywane.
 
 ## Osobne solvery dla dużych zestawów
 
@@ -22,7 +23,8 @@ bash cpp/build_specialized.sh
   seed=439 threads=3 outdir=cpp/candidates/retime439
 ```
 
-`level6_trajectories` przebudowuje całe trasy dwóch lub trzech emiterów,
+`level6_trajectories` przebudowuje całe trasy dwóch, trzech lub czterech emiterów
+(`freed=2`, `3` albo `4`),
 pozostawiając pozostałe ścieżki jako ograniczenia. Sprawdzenie możliwości
 przyszłego utworzenia i usunięcia materii odrzuca gałęzie, które nie mogą
 już zakończyć zadania. `mode=segments` przebudowuje odcinki między odbiorami,
@@ -32,6 +34,7 @@ Ostatni odcinek może zakończyć się w dowolnej konfiguracji.
 `explore=1` dopuszcza poprawne rozwiązania tej samej długości i krótkie
 wydłużenia jako punkty startowe następnych prób. Zapisuje wyłącznie najlepszy
 znaleziony wynik; przejściowe pogorszenia nie trafiają do plików wynikowych.
+`minlen=30` kieruje budżet na programy mające przynajmniej 30 kroków.
 
 `level6_retime` dobiera od nowa czas wykonania sześciu strumieni instrukcji,
 zachowując ich kolejność w obrębie emitera. Próbuje też usuwać pary ruchów
@@ -156,23 +159,23 @@ tej konkretnej próby; nie oznacza takiego samego przyspieszenia każdego trybu.
 
 `results.json` zawiera porównanie wszystkich zestawów i liczbę poprawionych
 przypadków. Punktacja medium + large + enormous jest podana oddzielnie od
-sumy wszystkich pięciu plików. Oryginalna wersja z master ma odpowiednio
+sumy wszystkich pięciu plików. Punktem odniesienia jest commit `e6d1c9c`, z wynikiem
 15 587 i 15 715 instrukcji. Wszystkie pliki końcowe są sprawdzane logiką
 oryginalnego symulatora z `level-6/sandbox-level-6.html`.
 
 Stan zapisany do wysłania po weryfikacji 553 programów; optymalizacja trwa:
 
-| Zestaw | Master | Ta wersja |
+| Zestaw | e6d1c9c | Ta wersja |
 | --- | ---: | ---: |
 | example | 20 | 20 |
 | small | 108 | 108 |
-| medium | 5907 | 5832 |
-| large | 5069 | 4824 |
-| enormous | 4611 | 4375 |
-| medium + large + enormous | 15587 | **15031** |
-| Wszystkie pliki | 15715 | **15159** |
+| medium | 5907 | 5831 |
+| large | 5069 | 4820 |
+| enormous | 4611 | 4356 |
+| medium + large + enormous | 15587 | **15007** |
+| Wszystkie pliki | 15715 | **15135** |
 
-Poprawiono 203 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
+Poprawiono 210 przypadków; żaden nie ma dłuższego programu niż na pobranym master.
 Identyczne pliki zapisano również w `python/outputs/`, a komplet pięciu
 plików do zgłoszenia jest w `cpp/level6_submission.zip`.
 
